@@ -1,0 +1,83 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --color-canvas: var(--bg);
+  --color-body: var(--text);
+  --color-heading: var(--text-h);
+  --color-line: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-bg);
+  --color-accent-line: var(--accent-border);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-gold: var(--gold);
+  --color-green: var(--green);
+  --color-green-soft: var(--green-soft);
+  --color-chip-bg: var(--chip-bg);
+  --color-chip-fg: var(--chip-fg);
+  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+:root {
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.5);
+  --sidebar: #12141a;
+  --sidebar-muted: #8b93a3;
+  --sidebar-hover: #1c1f27;
+  --gold: #f0b44c;
+  --green: #1f9d5a;
+  --green-soft: rgba(47, 191, 113, 0.12);
+  --chip-bg: rgba(240, 180, 76, 0.16);
+  --chip-fg: #8a5a05;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --bg: #16171d;
+    --border: #2e303a;
+    --accent: #c084fc;
+    --accent-bg: rgba(192, 132, 252, 0.15);
+    --accent-border: rgba(192, 132, 252, 0.5);
+    --green: #4ade80;
+    --green-soft: rgba(74, 222, 128, 0.12);
+    --chip-bg: rgba(240, 180, 76, 0.14);
+    --chip-fg: #f0b44c;
+  }
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: var(--text);
+    background: var(--bg);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-height: 100svh;
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-heading);
+    font-weight: 500;
+    color: var(--text-h);
+  }
+}
