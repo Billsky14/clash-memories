@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { ToastMessage } from '../../api/types.ts';
+import type { ToastMessage } from '../../lib/types.ts';
 import Icon from './Icon.tsx';
 
 type ToastStackProps = {

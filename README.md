@@ -1,20 +1,44 @@
 # clash-monitoring
 
-React frontend for Clash Monitor. It reads account and upgrade timer data from the
-`clashbe` API and provides a hash-routed landing page and a monitoring page.
+React client for Clash Monitor. It is fully client-side: account, upgrade, and boost
+data live in the browser's IndexedDB, so no backend or API server is required.
 
 ## Commands
 
 ```bash
 npm install
 npm run dev      # Vite dev server with HMR
+npm test         # Vitest suite
 npm run build    # tsc -b && vite build
 npm run lint     # Oxlint (not type-aware)
 npm run preview  # serve the production build
 ```
 
-The dev and preview servers proxy `/api` to `http://localhost:3000`, so `clashbe`
-must be running for the Monitoring page to load data.
+## Data storage
+
+The app uses the IndexedDB database `clash-monitor` with three object stores:
+
+- `accounts` — one record per village tag.
+- `upgrades` — active build timers, indexed by account and `endsAt`.
+- `boosts` — one active booster per account and kind.
+
+IndexedDB is the only source of truth. Data is per browser/origin; it survives
+reloads and browser restarts but can be removed by clearing site data or by
+browser storage eviction. The app requests persistent storage as a best-effort.
+
+This architecture does not migrate data from the old SQLite backend. Re-import
+each village JSON once after upgrading.
+
+## Timer behavior
+
+Each upgrade stores an absolute `endsAt` timestamp. The countdown is calculated
+from `endsAt - Date.now()` every second, so closing the browser or app does not
+pause it. On the next open the remaining time is still correct. There is no
+background process and no notification while the app is closed.
+
+Because timers use the device clock, changing the device time shifts the
+countdowns. Expired upgrades are cleaned up when the Monitoring page loads and
+are announced once with a toast.
 
 ## Structure
 
@@ -23,12 +47,12 @@ src/
 ├─ App.tsx                 # app shell and hash routing
 ├─ main.tsx
 ├─ index.css               # Tailwind CSS v4 entry and design tokens
-├─ api/                    # API client and shared response types
 ├─ pages/                  # Landing (Dashboard) and Monitoring pages
 ├─ components/
 │  ├─ common/              # shared UI (icon, toast, confirm dialog)
 │  └─ monitoring/          # account card, boost dialog, import modal
-└─ lib/                    # formatting, game data, booster specs, shared UI classes
+└─ lib/                    # formatting, game data, booster math, import parser,
+                           # IndexedDB data layer, shared UI classes
 ```
 
 ## Category headers

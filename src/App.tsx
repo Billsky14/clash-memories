@@ -124,7 +124,7 @@ export default function Home() {
 
         <div className="mt-auto flex items-center gap-2 border-t border-white/8 px-2.5 pt-3.5 pb-1 text-[11.5px] text-[#6b7280] max-[760px]:hidden">
           <span className="size-1.5 shrink-0 rounded-full bg-green" aria-hidden="true" />
-          Data tersinkron 2 menit lalu
+          Data tersimpan di perangkat ini
         </div>
       </aside>
 

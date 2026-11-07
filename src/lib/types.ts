@@ -34,25 +34,22 @@ export type Account = {
   boosts: AccountBoost[];
 };
 
-export type AccountsResponse = {
-  serverNow: number;
+export type AccountsSnapshot = {
   accounts: Account[];
   completed: AccountUpgrade[];
 };
 
-export type ImportResponse = {
+export type ImportResult = {
   account: Account;
   importedUpgrades: number;
-  serverNow: number;
 };
 
-export type BoostResponse = {
+export type BoostResult = {
   account: Account;
   boost: AccountBoost;
   affectedUpgrades: number;
   extended: boolean;
   addedQuantity: number;
-  serverNow: number;
 };
 
 export type ToastTone = 'success' | 'info' | 'error';

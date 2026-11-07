@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import type { Account, BoostKind, BoostResponse } from '../../api/types.ts';
-import { activateBoost } from '../../api/client.ts';
 import {
   BOOST_HOUR_MS,
   BOOST_SPECS,
   MAX_BOOST_QUANTITY,
 } from '../../lib/boosts.ts';
+import { activateBoost } from '../../lib/database.ts';
 import { formatCountdown } from '../../lib/format.ts';
+import type { Account, BoostKind, BoostResult } from '../../lib/types.ts';
 import Icon from '../common/Icon.tsx';
 
 type BoostDialogProps = {
@@ -15,7 +15,7 @@ type BoostDialogProps = {
   kind: BoostKind;
   now: number;
   onClose: () => void;
-  onActivated: (result: BoostResponse) => void;
+  onActivated: (result: BoostResult) => void;
 };
 
 const cancelButtonClass =

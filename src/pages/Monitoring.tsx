@@ -1,12 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiClientError, deleteAccount, deleteUpgrade, fetchAccounts } from '../api/client.ts';
-import type {
-  Account,
-  BoostKind,
-  BoostResponse,
-  ImportResponse,
-  ToastMessage,
-} from '../api/types.ts';
 import ConfirmDialog from '../components/common/ConfirmDialog.tsx';
 import Icon from '../components/common/Icon.tsx';
 import ToastStack from '../components/common/ToastStack.tsx';
@@ -14,7 +6,20 @@ import AccountCard from '../components/monitoring/AccountCard.tsx';
 import BoostDialog from '../components/monitoring/BoostDialog.tsx';
 import ImportModal from '../components/monitoring/ImportModal.tsx';
 import { BOOST_SPECS } from '../lib/boosts.ts';
+import {
+  deleteAccount,
+  deleteUpgrade,
+  listAccounts,
+  requestPersistentStorage,
+} from '../lib/database.ts';
 import { getGameName } from '../lib/gameData.ts';
+import type {
+  Account,
+  BoostKind,
+  BoostResult,
+  ImportResult,
+  ToastMessage,
+} from '../lib/types.ts';
 import { panelClass } from '../lib/ui.ts';
 
 type FinishedUpgrade = {
@@ -51,7 +56,6 @@ export default function Monitoring() {
   const [deleting, setDeleting] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [now, setNow] = useState(() => Date.now());
-  const serverOffsetRef = useRef(0);
   const notifiedRef = useRef(new Set<number>());
   const toastIdRef = useRef(0);
 
@@ -68,11 +72,10 @@ export default function Monitoring() {
 
   const loadAccounts = useCallback(async () => {
     try {
-      const data = await fetchAccounts();
+      const data = await listAccounts();
       setError(null);
-      serverOffsetRef.current = data.serverNow - Date.now();
       setAccounts(data.accounts);
-      setNow(data.serverNow);
+      setNow(Date.now());
 
       for (const upgrade of data.completed) {
         if (notifiedRef.current.has(upgrade.id)) continue;
@@ -86,7 +89,9 @@ export default function Monitoring() {
       }
     } catch (loadError) {
       setError(
-        loadError instanceof ApiClientError ? loadError.message : 'Gagal memuat data dari server.',
+        loadError instanceof Error
+          ? loadError.message
+          : 'Gagal memuat data dari penyimpanan lokal.',
       );
     } finally {
       setLoading(false);
@@ -99,13 +104,14 @@ export default function Monitoring() {
   }, [loadAccounts]);
 
   useEffect(() => {
-    // oxlint-disable-next-line react/set-state-in-effect -- initial data fetch
+    void requestPersistentStorage();
+    // oxlint-disable-next-line react/set-state-in-effect -- initial data load
     void loadAccounts();
   }, [loadAccounts]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      const current = Date.now() + serverOffsetRef.current;
+      const current = Date.now();
       setNow(current);
 
       const finished: FinishedUpgrade[] = [];
@@ -135,7 +141,7 @@ export default function Monitoring() {
           tone: 'success',
         });
         void deleteUpgrade(upgrade.id).catch(() => {
-          // The next GET /api/accounts will clean up the expired row if this fails.
+          // The next listAccounts() call cleans up the expired row if this fails.
         });
       }
 
@@ -152,13 +158,12 @@ export default function Monitoring() {
   }, [accounts, addToast]);
 
   const handleImported = useCallback(
-    (result: ImportResponse) => {
+    (result: ImportResult) => {
       const isUpdate = Boolean(importTarget?.tag);
       const previousAccount = accounts.find((account) => account.tag === result.account.tag);
       const hadActiveBoost =
-        previousAccount?.boosts.some((boost) => boost.endsAt > result.serverNow) ?? false;
+        previousAccount?.boosts.some((boost) => boost.endsAt > Date.now()) ?? false;
 
-      serverOffsetRef.current = result.serverNow - Date.now();
       setImportTarget(null);
       addToast({
         title: `Akun ${result.account.tag} ${isUpdate ? 'diperbarui' : 'diimpor'}`,
@@ -183,10 +188,9 @@ export default function Monitoring() {
   const closeBoost = useCallback(() => setBoostTarget(null), []);
 
   const handleBoosted = useCallback(
-    (result: BoostResponse) => {
+    (result: BoostResult) => {
       const spec = BOOST_SPECS[result.boost.kind];
 
-      serverOffsetRef.current = result.serverNow - Date.now();
       setBoostTarget(null);
       addToast({
         title: result.extended ? `${spec.label} diperpanjang` : `${spec.label} aktif`,
@@ -226,7 +230,7 @@ export default function Monitoring() {
       addToast({
         title: 'Gagal menghapus akun',
         detail:
-          deleteError instanceof ApiClientError ? deleteError.message : 'Coba lagi beberapa saat.',
+          deleteError instanceof Error ? deleteError.message : 'Coba lagi beberapa saat.',
         tone: 'error',
       });
     } finally {

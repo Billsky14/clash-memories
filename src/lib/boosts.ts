@@ -1,9 +1,9 @@
-import type { AccountBoost, BoostKind, UpgradeGroup } from '../api/types.ts';
+import type { AccountBoost, BoostKind, UpgradeGroup } from './types.ts';
 
 export const MAX_BOOST_QUANTITY = 5;
 export const BOOST_HOUR_MS = 3_600_000;
 
-type BoostSpec = {
+export type BoostSpec = {
   label: string;
   multiplier: number;
   targetGroup: UpgradeGroup;
@@ -44,14 +44,62 @@ const GROUP_BOOST_KIND: Partial<Record<UpgradeGroup, BoostKind>> = {
   pet: 'pet',
 };
 
+const LABORATORY_CATEGORIES = new Set(['units', 'spells', 'siege_machines']);
+
+export class BoostError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status = 400) {
+    super(message);
+    this.name = 'BoostError';
+    this.status = status;
+  }
+}
+
 export function getBoostKindForGroup(group: UpgradeGroup): BoostKind | null {
   return GROUP_BOOST_KIND[group] ?? null;
 }
 
-export function getNormalRemainingMs(
+export function isBoostKind(value: string): value is BoostKind {
+  return Object.hasOwn(BOOST_SPECS, value);
+}
+
+export function getBoostSpec(kind: string): BoostSpec | null {
+  return isBoostKind(kind) ? BOOST_SPECS[kind] : null;
+}
+
+export function getUpgradeGroup(base: string, category: string): UpgradeGroup {
+  if (base === 'builder') return 'builderBase';
+  if (category === 'pets') return 'pet';
+  if (LABORATORY_CATEGORIES.has(category)) return 'laboratory';
+  return 'home';
+}
+
+export function validateBoostQuantity(quantity: unknown): number {
+  if (
+    typeof quantity !== 'number' ||
+    !Number.isInteger(quantity) ||
+    quantity < 1 ||
+    quantity > MAX_BOOST_QUANTITY
+  ) {
+    throw new BoostError(
+      `Kuantitas booster harus berupa angka 1 sampai ${MAX_BOOST_QUANTITY}.`,
+    );
+  }
+
+  return quantity;
+}
+
+export function getBoostDurationMs(quantity: number): number {
+  return quantity * BOOST_HOUR_MS;
+}
+
+type ActiveBoostWindow = Pick<AccountBoost, 'endsAt' | 'multiplier'> | null | undefined;
+
+export function getRemainingWorkMs(
   endsAt: number,
   now: number,
-  activeBoost: AccountBoost | undefined,
+  activeBoost: ActiveBoostWindow,
 ): number {
   if (endsAt <= now) return 0;
 
@@ -64,8 +112,22 @@ export function getNormalRemainingMs(
   }
 
   return (
-    endsAt -
-    activeBoost.endsAt +
-    (activeBoost.endsAt - now) * activeBoost.multiplier
+    endsAt - activeBoost.endsAt + (activeBoost.endsAt - now) * activeBoost.multiplier
   );
+}
+
+export function getBoostedRemainingMs(
+  remainingMs: number,
+  multiplier: number,
+  durationMs: number,
+): number {
+  if (remainingMs <= 0) return 0;
+
+  const boostedCapacityMs = durationMs * multiplier;
+
+  if (remainingMs <= boostedCapacityMs) {
+    return Math.ceil(remainingMs / multiplier);
+  }
+
+  return durationMs + (remainingMs - boostedCapacityMs);
 }

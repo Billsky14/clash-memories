@@ -1,25 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import type { ImportResponse } from '../../api/types.ts';
-import { importAccount } from '../../api/client.ts';
+import { normalizeTag } from '../../lib/accountImport.ts';
+import { importAccount } from '../../lib/database.ts';
+import type { ImportResult } from '../../lib/types.ts';
 import Icon from '../common/Icon.tsx';
 
 type ImportModalProps = {
   expectedTag?: string;
   onClose: () => void;
-  onImported: (result: ImportResponse) => void;
+  onImported: (result: ImportResult) => void;
 };
 
 function getPayloadTag(payload: unknown): string | null {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
 
-  const rawTag = (payload as { tag?: unknown }).tag;
-  if (typeof rawTag !== 'string') return null;
-
-  const compact = rawTag.trim().toUpperCase();
-  if (!compact) return null;
-
-  return compact.startsWith('#') ? compact : `#${compact}`;
+  return normalizeTag((payload as { tag?: unknown }).tag);
 }
 
 const cancelButtonClass =

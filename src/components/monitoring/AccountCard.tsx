@@ -1,9 +1,9 @@
-import type { Account, AccountUpgrade, BoostKind, UpgradeGroup } from '../../api/types.ts';
+import type { Account, AccountUpgrade, BoostKind, UpgradeGroup } from '../../lib/types.ts';
 import {
   BOOST_SPECS,
   UPGRADE_GROUPS,
   getBoostKindForGroup,
-  getNormalRemainingMs,
+  getRemainingWorkMs,
 } from '../../lib/boosts.ts';
 import { formatCountdown, formatDurationMs, formatRelativeTime } from '../../lib/format.ts';
 import { getCategoryLabel, getGameName, getNextLevel } from '../../lib/gameData.ts';
@@ -167,7 +167,7 @@ export default function AccountCard({
                   {group.upgrades.map((upgrade) => {
                     const realRemaining = upgrade.endsAt - now;
                     const originalRemaining = activeBoost
-                      ? getNormalRemainingMs(upgrade.endsAt, now, activeBoost)
+                      ? getRemainingWorkMs(upgrade.endsAt, now, activeBoost)
                       : null;
                     const nextLevel = getNextLevel(upgrade.base, upgrade.dataId, upgrade.level);
 
