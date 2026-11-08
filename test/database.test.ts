@@ -77,23 +77,27 @@ describe('database', () => {
     expect(result.accounts[0].upgrades).toHaveLength(1);
   });
 
-  it('returns expired upgrades once and deletes them', async () => {
-    await importAccount(
+  it('keeps completed upgrades until they are dismissed', async () => {
+    const saved = await importAccount(
       { tag: '#ABC123', buildings: [{ data: 1000004, lvl: 16, timer: 60 }] },
       NOW,
     );
+    const id = saved.account.upgrades[0].id;
 
     const beforeExpiry = await listAccounts(NOW + 1000);
     expect(beforeExpiry.accounts[0].upgrades).toHaveLength(1);
-    expect(beforeExpiry.completed).toHaveLength(0);
 
     const afterExpiry = await listAccounts(NOW + 61_000);
-    expect(afterExpiry.accounts[0].upgrades).toHaveLength(0);
-    expect(afterExpiry.completed).toHaveLength(1);
-    expect(afterExpiry.completed[0].accountTag).toBe('#ABC123');
+    expect(afterExpiry.accounts[0].upgrades).toHaveLength(1);
+    expect(afterExpiry.accounts[0].upgrades[0].endsAt).toBe(NOW + 60_000);
 
-    const afterCleanup = await listAccounts(NOW + 62_000);
-    expect(afterCleanup.completed).toHaveLength(0);
+    const afterReopen = await listAccounts(NOW + 62_000);
+    expect(afterReopen.accounts[0].upgrades).toHaveLength(1);
+
+    expect(await deleteUpgrade(id)).toBe(true);
+
+    const afterDismiss = await listAccounts(NOW + 63_000);
+    expect(afterDismiss.accounts[0].upgrades).toHaveLength(0);
   });
 
   it('deletes an account together with its upgrades', async () => {
@@ -256,9 +260,14 @@ describe('database', () => {
     expect(restarted.boost.startedAt).toBe(NOW + 6 * HOUR);
     expect(restarted.boost.quantity).toBe(1);
     expect(restarted.boost.endsAt).toBe(NOW + 7 * HOUR);
-    expect(restarted.account.upgrades).toHaveLength(1);
-    expect(restarted.account.upgrades[0].category).toBe('heroes');
-    expect(restarted.account.upgrades[0].endsAt).toBe(NOW + 46 * HOUR);
+    expect(restarted.account.upgrades).toHaveLength(2);
+
+    const restartedByCategory = new Map(
+      restarted.account.upgrades.map((upgrade) => [upgrade.category, upgrade]),
+    );
+
+    expect(restartedByCategory.get('buildings')?.endsAt).toBe(NOW + 2 * HOUR);
+    expect(restartedByCategory.get('heroes')?.endsAt).toBe(NOW + 46 * HOUR);
   });
 
   it('rejects a booster when the target group has no active upgrades', async () => {

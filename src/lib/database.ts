@@ -253,31 +253,6 @@ function deleteByIndex(
   });
 }
 
-function deleteExpiredUpgrades(
-  store: IDBObjectStore,
-  now: number,
-): Promise<StoredUpgrade[]> {
-  return new Promise((resolve, reject) => {
-    const expired: StoredUpgrade[] = [];
-    const request = store.index(ENDS_AT_INDEX).openCursor(IDBKeyRange.upperBound(now));
-
-    request.onerror = () =>
-      reject(new DatabaseError('Gagal membersihkan upgrade kedaluwarsa.'));
-    request.onsuccess = () => {
-      const cursor = request.result;
-
-      if (!cursor) {
-        resolve(expired);
-        return;
-      }
-
-      expired.push(cursor.value as StoredUpgrade);
-      cursor.delete();
-      cursor.continue();
-    };
-  });
-}
-
 function deleteExpiredBoosts(store: IDBObjectStore, now: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = store.index(ENDS_AT_INDEX).openKeyCursor(IDBKeyRange.upperBound(now));
@@ -301,16 +276,12 @@ function deleteExpiredBoosts(store: IDBObjectStore, now: number): Promise<void> 
 async function readUpgradesForAccount(
   store: IDBObjectStore,
   tag: string,
-  now: number,
 ): Promise<AccountUpgrade[]> {
   const records = (await requestResult(
     store.index(ACCOUNT_TAG_INDEX).getAll(tag),
   )) as StoredUpgrade[];
 
-  return records
-    .filter((record) => record.endsAt > now)
-    .sort(compareByEndsAt)
-    .map(mapUpgrade);
+  return records.sort(compareByEndsAt).map(mapUpgrade);
 }
 
 async function readBoostsForAccount(
@@ -342,7 +313,6 @@ async function readAccount(
   const upgrades = await readUpgradesForAccount(
     transaction.objectStore(UPGRADES_STORE),
     tag,
-    now,
   );
   const boosts = await readBoostsForAccount(
     transaction.objectStore(BOOSTS_STORE),
@@ -426,7 +396,6 @@ export async function listAccounts(now = Date.now()): Promise<AccountsSnapshot> 
       const upgradesStore = transaction.objectStore(UPGRADES_STORE);
       const boostsStore = transaction.objectStore(BOOSTS_STORE);
 
-      const completed = await deleteExpiredUpgrades(upgradesStore, now);
       await deleteExpiredBoosts(boostsStore, now);
 
       const accountRecords = (await requestResult(
@@ -470,10 +439,7 @@ export async function listAccounts(now = Date.now()): Promise<AccountsSnapshot> 
           boosts: (boostsByAccount.get(record.tag) ?? []).sort(compareByEndsAt),
         }));
 
-      return {
-        accounts,
-        completed: completed.sort(compareByEndsAt).map(mapUpgrade),
-      };
+      return { accounts };
     },
   );
 }

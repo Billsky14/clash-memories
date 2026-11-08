@@ -37,20 +37,32 @@ pause it. On the next open the remaining time is still correct. There is no
 background process and no notification while the app is closed.
 
 Because timers use the device clock, changing the device time shifts the
-countdowns. Expired upgrades are cleaned up when the Monitoring page loads and
-are announced once with a toast.
+countdowns. Completed upgrades stay in the village card with a Selesai marker
+until you dismiss them with the X button; only then are they removed from
+storage. Expired boosts are still cleaned up automatically.
+
+## Routing
+
+The app uses the History API with clean paths, not hash fragments:
+
+- `/` or `/landing` — landing page.
+- `/tracker` — tracker page.
+- `/fitur`, `/cara-kerja`, `/booster`, `/faq` — landing page scrolled to that section.
+
+Vite serves the SPA fallback in development and preview. A static host needs a
+rewrite of unknown paths to `index.html` so direct visits to `/tracker` work.
 
 ## Structure
 
 ```text
 src/
-├─ App.tsx                 # app shell and hash routing
+├─ App.tsx                 # app shell and path routing
 ├─ main.tsx
 ├─ index.css               # Tailwind CSS v4 entry and design tokens
-├─ pages/                  # Landing (Dashboard) and Monitoring pages
+├─ pages/                  # Landing and Tracker pages
 ├─ components/
-│  ├─ common/              # shared UI (icon, toast, confirm dialog)
-│  └─ monitoring/          # account card, boost dialog, import modal
+│  ├─ common/              # shared UI (link, icon, toast, confirm dialog)
+│  └─ tracker/             # account card, boost dialog, import modal
 └─ lib/                    # formatting, game data, booster math, import parser,
                            # IndexedDB data layer, shared UI classes
 ```

@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import ConfirmDialog from '../components/common/ConfirmDialog.tsx';
 import Icon from '../components/common/Icon.tsx';
 import ToastStack from '../components/common/ToastStack.tsx';
-import AccountCard from '../components/monitoring/AccountCard.tsx';
-import BoostDialog from '../components/monitoring/BoostDialog.tsx';
-import ImportModal from '../components/monitoring/ImportModal.tsx';
+import AccountCard from '../components/tracker/AccountCard.tsx';
+import BoostDialog from '../components/tracker/BoostDialog.tsx';
+import ImportModal from '../components/tracker/ImportModal.tsx';
 import { BOOST_SPECS } from '../lib/boosts.ts';
 import {
   deleteAccount,
@@ -12,22 +12,15 @@ import {
   listAccounts,
   requestPersistentStorage,
 } from '../lib/database.ts';
-import { getGameName } from '../lib/gameData.ts';
 import type {
   Account,
+  AccountUpgrade,
   BoostKind,
   BoostResult,
   ImportResult,
   ToastMessage,
 } from '../lib/types.ts';
 import { panelClass } from '../lib/ui.ts';
-
-type FinishedUpgrade = {
-  id: number;
-  accountTag: string;
-  base: string;
-  dataId: number;
-};
 
 const toolbarClass =
   'mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-canvas px-5 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]';
@@ -43,7 +36,7 @@ const gridClass = 'grid gap-4 min-[760px]:grid-cols-2 min-[1100px]:grid-cols-3';
 const errorPanelClass =
   'rounded-xl border border-[#dc2626]/30 bg-[rgba(220,38,38,0.08)] px-4 py-3 text-[12px] text-[#b91c1c] dark:text-[#f87171]';
 
-export default function Monitoring() {
+export default function Tracker() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +49,6 @@ export default function Monitoring() {
   const [deleting, setDeleting] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [now, setNow] = useState(() => Date.now());
-  const notifiedRef = useRef(new Set<number>());
   const toastIdRef = useRef(0);
 
   const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
@@ -76,17 +68,6 @@ export default function Monitoring() {
       setError(null);
       setAccounts(data.accounts);
       setNow(Date.now());
-
-      for (const upgrade of data.completed) {
-        if (notifiedRef.current.has(upgrade.id)) continue;
-
-        notifiedRef.current.add(upgrade.id);
-        addToast({
-          title: 'Upgrade selesai',
-          detail: `${getGameName(upgrade.base, upgrade.dataId)} · ${upgrade.accountTag}`,
-          tone: 'success',
-        });
-      }
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -96,7 +77,7 @@ export default function Monitoring() {
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, []);
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -110,52 +91,9 @@ export default function Monitoring() {
   }, [loadAccounts]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      const current = Date.now();
-      setNow(current);
-
-      const finished: FinishedUpgrade[] = [];
-
-      for (const account of accounts) {
-        for (const upgrade of account.upgrades) {
-          if (upgrade.endsAt <= current) {
-            finished.push({
-              id: upgrade.id,
-              accountTag: account.tag,
-              base: upgrade.base,
-              dataId: upgrade.dataId,
-            });
-          }
-        }
-      }
-
-      if (finished.length === 0) return;
-
-      for (const upgrade of finished) {
-        if (notifiedRef.current.has(upgrade.id)) continue;
-
-        notifiedRef.current.add(upgrade.id);
-        addToast({
-          title: 'Upgrade selesai',
-          detail: `${getGameName(upgrade.base, upgrade.dataId)} · ${upgrade.accountTag}`,
-          tone: 'success',
-        });
-        void deleteUpgrade(upgrade.id).catch(() => {
-          // The next listAccounts() call cleans up the expired row if this fails.
-        });
-      }
-
-      const finishedIds = new Set(finished.map((upgrade) => upgrade.id));
-      setAccounts((currentAccounts) =>
-        currentAccounts.map((account) => ({
-          ...account,
-          upgrades: account.upgrades.filter((upgrade) => !finishedIds.has(upgrade.id)),
-        })),
-      );
-    }, 1_000);
-
+    const interval = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(interval);
-  }, [accounts, addToast]);
+  }, []);
 
   const handleImported = useCallback(
     (result: ImportResult) => {
@@ -238,7 +176,35 @@ export default function Monitoring() {
     }
   }, [addToast, deleteTarget, refresh]);
 
-  const activeCount = accounts.reduce((total, account) => total + account.upgrades.length, 0);
+  const handleDismissUpgrade = useCallback(
+    async (upgrade: AccountUpgrade) => {
+      try {
+        await deleteUpgrade(upgrade.id);
+        setAccounts((currentAccounts) =>
+          currentAccounts.map((account) => ({
+            ...account,
+            upgrades: account.upgrades.filter((item) => item.id !== upgrade.id),
+          })),
+        );
+      } catch (dismissError) {
+        addToast({
+          title: 'Gagal menutup peningkatan',
+          detail:
+            dismissError instanceof Error
+              ? dismissError.message
+              : 'Coba lagi beberapa saat.',
+          tone: 'error',
+        });
+      }
+    },
+    [addToast],
+  );
+
+  const activeCount = accounts.reduce(
+    (total, account) =>
+      total + account.upgrades.filter((upgrade) => upgrade.endsAt > now).length,
+    0,
+  );
   const isInitialLoading = loading && accounts.length === 0 && !error;
 
   return (
@@ -361,6 +327,7 @@ export default function Monitoring() {
               onUpdate={handleUpdateAccount}
               onDelete={handleDeleteAccount}
               onBoost={handleBoost}
+              onDismissUpgrade={handleDismissUpgrade}
             />
           ))}
         </div>

@@ -16,6 +16,7 @@ type AccountCardProps = {
   onUpdate: (account: Account) => void;
   onDelete: (account: Account) => void;
   onBoost: (account: Account, kind: BoostKind) => void;
+  onDismissUpgrade: (upgrade: AccountUpgrade) => void;
 };
 
 type GroupedUpgrades = {
@@ -61,6 +62,7 @@ export default function AccountCard({
   onUpdate,
   onDelete,
   onBoost,
+  onDismissUpgrade,
 }: AccountCardProps) {
   const upgrades = account.upgrades
     .filter((upgrade) => !isEquipment(upgrade))
@@ -117,6 +119,9 @@ export default function AccountCard({
             const activeBoost = boostKind
               ? activeBoosts.find((boost) => boost.kind === boostKind)
               : undefined;
+            const hasActiveUpgrades = group.upgrades.some(
+              (upgrade) => upgrade.endsAt > now,
+            );
 
             return (
               <section
@@ -131,7 +136,7 @@ export default function AccountCard({
                   <span className="text-[10px] font-semibold tabular-nums text-body opacity-80">
                     {group.upgrades.length} Peningkatan
                   </span>
-                  {spec && boostKind && (
+                  {spec && boostKind && hasActiveUpgrades && (
                     <div className="ml-auto -translate-y-1">
                       {activeBoost ? (
                         <button
@@ -166,9 +171,11 @@ export default function AccountCard({
                 <ul className="m-0 list-none pb-1">
                   {group.upgrades.map((upgrade) => {
                     const realRemaining = upgrade.endsAt - now;
-                    const originalRemaining = activeBoost
-                      ? getRemainingWorkMs(upgrade.endsAt, now, activeBoost)
-                      : null;
+                    const isCompleted = realRemaining <= 0;
+                    const originalRemaining =
+                      !isCompleted && activeBoost
+                        ? getRemainingWorkMs(upgrade.endsAt, now, activeBoost)
+                        : null;
                     const nextLevel = getNextLevel(upgrade.base, upgrade.dataId, upgrade.level);
 
                     return (
@@ -186,7 +193,29 @@ export default function AccountCard({
                           </p>
                         </div>
                         <div className="shrink-0 text-right">
-                          {activeBoost && originalRemaining !== null ? (
+                          {isCompleted ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <span
+                                className="inline-flex items-center gap-1 rounded-full bg-green-soft px-2 py-1 text-[10px] font-semibold text-green [&_svg]:size-3"
+                                role="status"
+                                title={`Selesai ${new Date(upgrade.endsAt).toLocaleString('id-ID')}`}
+                              >
+                                <Icon>
+                                  <path d="m5 13 4 4L19 7" />
+                                </Icon>
+                                Selesai
+                              </span>
+                              <button
+                                type="button"
+                                className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-[14px] text-body hover:bg-[rgba(127,127,127,0.08)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                                onClick={() => onDismissUpgrade(upgrade)}
+                                aria-label={`Tutup peningkatan selesai ${getGameName(upgrade.base, upgrade.dataId)}`}
+                                title="Tutup peningkatan selesai"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ) : activeBoost && originalRemaining !== null ? (
                             <div
                               title={`Timer asli ${formatDurationMs(originalRemaining)} (${activeBoost.multiplier}x) · selesai dalam ${formatCountdown(upgrade.endsAt, now)}`}
                             >

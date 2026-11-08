@@ -36,7 +36,6 @@ export type Account = {
 
 export type AccountsSnapshot = {
   accounts: Account[];
-  completed: AccountUpgrade[];
 };
 
 export type ImportResult = {
