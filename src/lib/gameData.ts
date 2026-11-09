@@ -26,8 +26,23 @@ function toEntries(query: QueryLike): GameEntry[] {
 const homeData = home();
 const builderData = builder();
 
+const homeArmyBuildings = homeData.armyBuildings();
+const homeOtherBuildings = homeData.otherBuildings();
+
 const entries: GameEntry[] = [
-  ...toEntries(homeData.armyBuildings()),
+  // `armyBuildings().get()` only returns Army Camp; the other buildings are
+  // exposed through their own accessors. The same applies to otherBuildings().
+  ...toEntries(homeArmyBuildings.armyCamp()),
+  ...toEntries(homeArmyBuildings.barracks()),
+  ...toEntries(homeArmyBuildings.darkBarracks()),
+  ...toEntries(homeArmyBuildings.laboratory()),
+  ...toEntries(homeArmyBuildings.spellFactory()),
+  ...toEntries(homeArmyBuildings.darkSpellFactory()),
+  ...toEntries(homeArmyBuildings.heroBanner()),
+  ...toEntries(homeArmyBuildings.heroHall()),
+  ...toEntries(homeArmyBuildings.blacksmith()),
+  ...toEntries(homeArmyBuildings.workshop()),
+  ...toEntries(homeArmyBuildings.petHouse()),
   ...toEntries(homeData.defenses()),
   ...toEntries(homeData.craftedDefenses()),
   ...toEntries(homeData.guardians()),
@@ -41,7 +56,9 @@ const entries: GameEntry[] = [
   ...toEntries(homeData.troops()),
   ...toEntries(homeData.pets()),
   ...toEntries(homeData.siegeMachines()),
-  ...toEntries(homeData.otherBuildings()),
+  ...toEntries(homeOtherBuildings.bobsHut()),
+  ...toEntries(homeOtherBuildings.helperHut()),
+  ...toEntries(homeOtherBuildings.helpers()),
   ...toEntries(builderData.builderHall()),
   ...toEntries(builderData.defenses()),
   ...toEntries(builderData.traps()),

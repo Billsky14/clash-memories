@@ -8,10 +8,24 @@ import {
   deleteUpgrade,
   importAccount,
   listAccounts,
+  syncAccountMetadata,
 } from '../src/lib/database.ts';
 
 const NOW = 1_800_000_000_000;
 const HOUR = 3_600_000;
+
+const API_METADATA = {
+  name: 'Desa Uji',
+  townHallLevel: 15,
+  expLevel: 200,
+  trophies: 5000,
+  bestTrophies: 5200,
+  warStars: 900,
+  clanTag: '#CLAN99',
+  clanName: 'Clan Uji',
+  clanLevel: 10,
+  leagueName: 'Titan League',
+};
 
 function savePayload(
   payload: Record<string, unknown>,
@@ -335,6 +349,77 @@ describe('database', () => {
     expect(await countStore('boosts')).toBe(0);
   });
 
+  it('imports active potions and compresses affected timers', async () => {
+    const result = await savePayload({
+      tag: '#ABC123',
+      buildings: [{ data: 1000004, lvl: 16, timer: 135042 }],
+      units: [{ data: 4000008, lvl: 10, timer: 86400 }],
+      pets: [{ data: 73000004, lvl: 8, timer: 43200 }],
+      boosts: { builder_boost: 4102, lab_boost: 3600, pet_boost: 1800 },
+    });
+
+    expect(result.account.boosts.map((boost) => boost.kind).sort()).toEqual([
+      'builder',
+      'laboratory',
+      'pet',
+    ]);
+
+    const home = result.account.upgrades.find(
+      (upgrade) => upgrade.category === 'buildings',
+    );
+    const lab = result.account.upgrades.find(
+      (upgrade) => upgrade.category === 'units',
+    );
+    const pet = result.account.upgrades.find(
+      (upgrade) => upgrade.category === 'pets',
+    );
+    const builder = result.account.boosts.find(
+      (boost) => boost.kind === 'builder',
+    );
+
+    expect(home?.endsAt).toBe(NOW + 98_124_000);
+    expect(lab?.endsAt).toBe(NOW + 3_600_000);
+    expect(pet?.endsAt).toBe(NOW + 1_800_000);
+    expect(builder?.quantity).toBe(2);
+    expect(builder?.endsAt).toBe(NOW + 4_102_000);
+  });
+
+  it('does not store potions that expired before import', async () => {
+    const result = await savePayload(
+      {
+        tag: '#ABC123',
+        timestamp: (NOW - 2 * HOUR) / 1000,
+        buildings: [{ data: 1000004, lvl: 16, timer: 20 * 3600 }],
+        boosts: { builder_boost: 3600 },
+      },
+      NOW,
+    );
+
+    expect(result.account.boosts).toEqual([]);
+    expect(result.account.upgrades[0].endsAt).toBe(NOW + 9 * HOUR);
+  });
+
+  it('replaces imported boosts when an account is imported again', async () => {
+    await savePayload({
+      tag: '#ABC123',
+      buildings: [{ data: 1000004, lvl: 16, timer: 20 * 3600 }],
+      boosts: { builder_boost: 3600 },
+    });
+
+    const reimported = await savePayload(
+      {
+        tag: '#ABC123',
+        pets: [{ data: 73000004, lvl: 8, timer: 10 * 3600 }],
+        boosts: { pet_boost: 1800 },
+      },
+      NOW + 1000,
+    );
+
+    expect(reimported.account.boosts.map((boost) => boost.kind)).toEqual([
+      'pet',
+    ]);
+  });
+
   it('clears active boosts when an account is imported again', async () => {
     await savePayload({
       tag: '#ABC123',
@@ -353,5 +438,52 @@ describe('database', () => {
 
     expect(reimported.account.boosts).toHaveLength(0);
     expect(reimported.account.upgrades[0].endsAt).toBe(NOW + 1000 + 30 * HOUR);
+  });
+
+  it('stores API metadata without touching upgrades or boosts', async () => {
+    await savePayload({
+      tag: '#ABC123',
+      buildings: [{ data: 1000004, lvl: 16, timer: 20 * 3600 }],
+    });
+    await activateBoost('#ABC123', 'builder', 1, NOW);
+
+    const updated = await syncAccountMetadata('#ABC123', API_METADATA, NOW + 1000);
+
+    expect(updated).not.toBeNull();
+    expect(updated?.api).toEqual({
+      ...API_METADATA,
+      updatedAt: NOW + 1000,
+    });
+    expect(updated?.townHall).toBeNull();
+    expect(updated?.upgrades).toHaveLength(1);
+    expect(updated?.boosts).toHaveLength(1);
+
+    const listed = await listAccounts(NOW + 2000);
+    expect(listed.accounts[0].api?.name).toBe('Desa Uji');
+    expect(listed.accounts[0].upgrades).toHaveLength(1);
+  });
+
+  it('preserves API metadata when an account is imported again', async () => {
+    await savePayload({
+      tag: '#ABC123',
+      buildings: [{ data: 1000004, lvl: 16, timer: 60 }],
+    });
+    await syncAccountMetadata('#ABC123', API_METADATA, NOW + 1000);
+
+    const reimported = await savePayload(
+      {
+        tag: '#ABC123',
+        buildings: [{ data: 1000004, lvl: 16, timer: 120 }],
+      },
+      NOW + 2000,
+    );
+
+    expect(reimported.account.api?.name).toBe('Desa Uji');
+    expect(reimported.account.api?.updatedAt).toBe(NOW + 1000);
+  });
+
+  it('does not create an account from metadata alone', async () => {
+    expect(await syncAccountMetadata('#MISSING', API_METADATA, NOW)).toBeNull();
+    expect((await listAccounts(NOW)).accounts).toHaveLength(0);
   });
 });

@@ -7,10 +7,18 @@ import BoostDialog from '../components/tracker/BoostDialog.tsx';
 import ImportModal from '../components/tracker/ImportModal.tsx';
 import { BOOST_SPECS } from '../lib/boosts.ts';
 import {
+  getApiStatus,
+  getCocApiErrorMessage,
+  getPlayer,
+  isCocProxyUnavailable,
+  toAccountMetadata,
+} from '../lib/cocApi.ts';
+import {
   deleteAccount,
   deleteUpgrade,
   listAccounts,
   requestPersistentStorage,
+  syncAccountMetadata,
 } from '../lib/database.ts';
 import type {
   Account,
@@ -36,6 +44,11 @@ const gridClass = 'grid gap-4 min-[760px]:grid-cols-2 min-[1100px]:grid-cols-3';
 const errorPanelClass =
   'rounded-xl border border-[#dc2626]/30 bg-[rgba(220,38,38,0.08)] px-4 py-3 text-[12px] text-[#b91c1c] dark:text-[#f87171]';
 
+type ApiAvailability = {
+  reachable: boolean;
+  configured: boolean;
+};
+
 export default function Tracker() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,9 +60,15 @@ export default function Tracker() {
     kind: BoostKind;
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [syncingMetadata, setSyncingMetadata] = useState(false);
+  const [apiAvailability, setApiAvailability] = useState<ApiAvailability | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const toastIdRef = useRef(0);
+  const syncingMetadataRef = useRef(false);
+  const metadataSyncAttemptedRef = useRef(new Set<string>());
+  const apiReachable = apiAvailability?.reachable === true;
+  const apiConfigured = apiAvailability?.configured === true;
 
   const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
     const id = ++toastIdRef.current;
@@ -79,16 +98,127 @@ export default function Tracker() {
     }
   }, []);
 
+  const checkApiStatus = useCallback(async () => {
+    try {
+      const status = await getApiStatus();
+      setApiAvailability({ reachable: true, configured: status.configured });
+    } catch {
+      setApiAvailability({ reachable: false, configured: false });
+    }
+  }, []);
+
   const refresh = useCallback(() => {
     setLoading(true);
     void loadAccounts();
-  }, [loadAccounts]);
+    void checkApiStatus();
+  }, [checkApiStatus, loadAccounts]);
+
+  const syncMetadata = useCallback(
+    async (targets: Account[], silent = false) => {
+      if (targets.length === 0 || syncingMetadataRef.current) return;
+
+      syncingMetadataRef.current = true;
+      setSyncingMetadata(true);
+
+      let updatedCount = 0;
+      const failures: string[] = [];
+
+      try {
+        const status = await getApiStatus();
+        setApiAvailability({ reachable: true, configured: status.configured });
+
+        if (!status.configured) {
+          if (!silent) {
+            addToast({
+              title: 'Token API belum diset',
+              detail:
+                'Tambahkan COC_API_TOKEN di clash-monitoring/.env.local, lalu jalankan ulang server.',
+              tone: 'error',
+            });
+          }
+          return;
+        }
+
+        for (const account of targets) {
+          try {
+            const player = await getPlayer(account.tag, !silent);
+            const updatedAccount = await syncAccountMetadata(
+              account.tag,
+              toAccountMetadata(player),
+            );
+
+            if (!updatedAccount) continue;
+
+            updatedCount += 1;
+            setAccounts((current) =>
+              current.map((item) =>
+                item.tag === updatedAccount.tag ? updatedAccount : item,
+              ),
+            );
+          } catch (syncError) {
+            if (!(silent && isCocProxyUnavailable(syncError))) {
+              failures.push(getCocApiErrorMessage(syncError));
+            }
+          }
+        }
+      } catch (statusError) {
+        setApiAvailability({ reachable: false, configured: false });
+        if (!(silent && isCocProxyUnavailable(statusError))) {
+          failures.push(getCocApiErrorMessage(statusError));
+        }
+      } finally {
+        syncingMetadataRef.current = false;
+        setSyncingMetadata(false);
+      }
+
+      if (updatedCount > 0) {
+        addToast({
+          title: `${updatedCount} desa diperbarui`,
+          detail: 'Nama dan detail desa diambil dari API Supercell.',
+          tone: 'success',
+        });
+      }
+
+      if (failures.length > 0) {
+        addToast({
+          title:
+            updatedCount > 0
+              ? 'Sebagian desa gagal diperbarui'
+              : 'Gagal mengambil detail desa',
+          detail:
+            failures.length > 1
+              ? `${failures[0]} (${failures.length - 1} desa lainnya gagal)`
+              : failures[0],
+          tone: 'error',
+        });
+      }
+    },
+    [addToast],
+  );
 
   useEffect(() => {
     void requestPersistentStorage();
     // oxlint-disable-next-line react/set-state-in-effect -- initial data load
     void loadAccounts();
-  }, [loadAccounts]);
+    void checkApiStatus();
+  }, [checkApiStatus, loadAccounts]);
+
+  useEffect(() => {
+    if (loading || syncingMetadata || !apiConfigured) return;
+
+    const pending = accounts.filter(
+      (account) =>
+        !account.api && !metadataSyncAttemptedRef.current.has(account.tag),
+    );
+
+    if (pending.length === 0) return;
+
+    for (const account of pending) {
+      metadataSyncAttemptedRef.current.add(account.tag);
+    }
+
+    void syncMetadata(pending, true);
+  }, [accounts, apiConfigured, loading, syncingMetadata, syncMetadata]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 1_000);
@@ -101,13 +231,25 @@ export default function Tracker() {
       const previousAccount = accounts.find((account) => account.tag === result.account.tag);
       const hadActiveBoost =
         previousAccount?.boosts.some((boost) => boost.endsAt > Date.now()) ?? false;
+      const activeImportedBoosts = result.account.boosts.filter(
+        (boost) => boost.endsAt > Date.now(),
+      );
+      const importedBoostLabels = activeImportedBoosts
+        .map((boost) => BOOST_SPECS[boost.kind].label)
+        .join(', ');
+      const boostDetail =
+        activeImportedBoosts.length > 0
+          ? hadActiveBoost
+            ? ` Booster aktif sebelumnya diganti data ekspor: ${importedBoostLabels}.`
+            : ` Booster mengikuti data ekspor: ${importedBoostLabels}.`
+          : hadActiveBoost
+            ? ' Booster aktif sebelumnya dibatalkan.'
+            : '';
 
       setImportTarget(null);
       addToast({
         title: `Akun ${result.account.tag} ${isUpdate ? 'diperbarui' : 'diimpor'}`,
-        detail: `${result.importedUpgrades} upgrade aktif.${
-          hadActiveBoost ? ' Booster aktif dibatalkan.' : ''
-        }`,
+        detail: `${result.importedUpgrades} upgrade aktif.${boostDetail}`,
         tone: 'success',
       });
       refresh();
@@ -234,6 +376,21 @@ export default function Tracker() {
             </Icon>
             {loading ? 'Memuat...' : 'Perbarui'}
           </button>
+          {apiReachable && (
+            <button
+              type="button"
+              className={secondaryButtonClass}
+              onClick={() => void syncMetadata(accounts)}
+              disabled={loading || syncingMetadata || accounts.length === 0}
+              title="Ambil nama dan detail desa dari API Supercell"
+            >
+              <Icon>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </Icon>
+              {syncingMetadata ? 'Sinkron...' : 'Sinkron desa'}
+            </button>
+          )}
           <button type="button" className={primaryButtonClass} onClick={() => setImportTarget({})}>
             <Icon>
               <path d="M12 5v14" />

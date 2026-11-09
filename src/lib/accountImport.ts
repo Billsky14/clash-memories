@@ -1,5 +1,19 @@
+import {
+  BOOST_HOUR_MS,
+  BOOST_SPECS,
+  getBoostedRemainingMs,
+  getUpgradeGroup,
+} from './boosts.ts';
+import type { BoostKind } from './types.ts';
+
 const ACCOUNT_TAG_PATTERN = /^#[0-9A-Z]{3,15}$/;
 const TOWN_HALL_DATA_ID = 1_000_001;
+
+const EXPORT_BOOST_FIELDS: ReadonlyArray<{ field: string; kind: BoostKind }> = [
+  { field: 'builder_boost', kind: 'builder' },
+  { field: 'lab_boost', kind: 'laboratory' },
+  { field: 'pet_boost', kind: 'pet' },
+];
 
 export class ImportValidationError extends Error {
   constructor(message: string) {
@@ -19,11 +33,21 @@ export type ParsedUpgrade = {
   endsAt: number;
 };
 
+export type ParsedBoost = {
+  kind: BoostKind;
+  multiplier: number;
+  quantity: number;
+  remainingSeconds: number;
+  startedAt: number;
+  endsAt: number;
+};
+
 export type ParsedAccountImport = {
   tag: string;
   townHall: number | null;
   sourceTimestamp: number | null;
   upgrades: ParsedUpgrade[];
+  boosts: ParsedBoost[];
 };
 
 type CollectedUpgrade = Omit<ParsedUpgrade, 'endsAt'>;
@@ -60,6 +84,62 @@ function getSnapshotTime(timestamp: number | null): number | null {
 
   // The usual export uses epoch seconds; accept epoch milliseconds too.
   return timestamp >= 1_000_000_000_000 ? timestamp : timestamp * 1000;
+}
+
+function extractBoosts(value: unknown, referenceTime: number): ParsedBoost[] {
+  if (!isRecord(value)) return [];
+
+  const boosts: ParsedBoost[] = [];
+
+  for (const { field, kind } of EXPORT_BOOST_FIELDS) {
+    const raw = value[field];
+
+    if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) continue;
+
+    const remainingSeconds = Math.round(raw);
+    if (remainingSeconds <= 0) continue;
+
+    const spec = BOOST_SPECS[kind];
+    const quantity = Math.max(
+      1,
+      Math.ceil(remainingSeconds / (BOOST_HOUR_MS / 1000)),
+    );
+    const endsAt = referenceTime + remainingSeconds * 1000;
+
+    boosts.push({
+      kind,
+      multiplier: spec.multiplier,
+      quantity,
+      remainingSeconds,
+      startedAt: endsAt - quantity * BOOST_HOUR_MS,
+      endsAt,
+    });
+  }
+
+  return boosts;
+}
+
+function getImportEndsAt(
+  upgrade: CollectedUpgrade,
+  boosts: ParsedBoost[],
+  referenceTime: number,
+): number {
+  const group = getUpgradeGroup(upgrade.base, upgrade.category);
+  const boost = boosts.find(
+    (candidate) => BOOST_SPECS[candidate.kind].targetGroup === group,
+  );
+  const remainingMs = upgrade.remainingSeconds * 1000;
+
+  if (!boost) return referenceTime + remainingMs;
+
+  return (
+    referenceTime +
+    getBoostedRemainingMs(
+      remainingMs,
+      boost.multiplier,
+      boost.remainingSeconds * 1000,
+    )
+  );
 }
 
 function collectEntry(value: unknown, category: string, output: CollectedUpgrade[]): void {
@@ -137,15 +217,17 @@ export function parseAccountImport(payload: unknown, now = Date.now()): ParsedAc
   const sourceTimestamp = toFiniteNumber(payload.timestamp);
   const snapshotTime = getSnapshotTime(sourceTimestamp);
   const referenceTime = snapshotTime ?? now;
+  const boosts = extractBoosts(payload.boosts, referenceTime);
 
   return {
     tag,
     townHall: extractTownHall(payload),
     sourceTimestamp,
+    boosts,
     upgrades: upgrades
       .map((upgrade) => ({
         ...upgrade,
-        endsAt: referenceTime + upgrade.remainingSeconds * 1000,
+        endsAt: getImportEndsAt(upgrade, boosts, referenceTime),
       }))
       .filter((upgrade) => upgrade.endsAt > now),
   };

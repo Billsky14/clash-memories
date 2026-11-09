@@ -69,20 +69,35 @@ export default function AccountCard({
     .sort((a, b) => a.endsAt - b.endsAt);
   const groups = groupUpgrades(upgrades);
   const activeBoosts = account.boosts.filter((boost) => boost.endsAt > now);
+  const api = account.api;
+  const displayName = api?.name ?? account.tag;
+  const townHall = api?.townHallLevel ?? account.townHall;
 
   return (
-    <section className={panelClass} aria-label={`Akun ${account.tag}`}>
+    <section className={panelClass} aria-label={`Akun ${displayName} (${account.tag})`}>
       <div className={panelHeadClass}>
         <div className="min-w-0">
           <h2 className="m-0 truncate text-[15px] font-semibold tracking-[-0.01em] text-heading">
-            {account.tag}
+            {displayName}
           </h2>
-          <p className={panelSubtitleClass}>
-            Diperbarui {formatRelativeTime(account.lastImportAt, now)}
+          <p className={`${panelSubtitleClass} truncate`}>
+            <span className="font-mono">{account.tag}</span>
+            {api?.clanName && <> · {api.clanName}</>}
+            {api?.leagueName && <> · {api.leagueName}</>}
+          </p>
+          <p className="mt-0.5 text-[10.5px] text-body">
+            {api
+              ? `Detail desa ${formatRelativeTime(api.updatedAt, now)}`
+              : account.lastImportAt > 0
+                ? `Diperbarui ${formatRelativeTime(account.lastImportAt, now)}`
+                : 'Belum ada impor timer'}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {account.townHall !== null && <span className={thBadgeClass}>TH {account.townHall}</span>}
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {townHall !== null && <span className={thBadgeClass}>TH {townHall}</span>}
+          {api?.trophies != null && (
+            <span className={thBadgeClass}>{api.trophies.toLocaleString('id-ID')} Trofi</span>
+          )}
           <span className="rounded-full bg-chip-bg px-2 py-1 text-[10px] font-semibold text-chip-fg">
             {upgrades.length} Peningkatan
           </span>

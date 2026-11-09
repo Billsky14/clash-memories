@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Local API credentials
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -28,3 +33,12 @@ AGENTS.md
 
 # Playwright MCP session logs
 .playwright-mcp
+.serena
+
+# Vercel CLI
+.vercel
+
+# Test output
+coverage
+playwright-report
+test-results

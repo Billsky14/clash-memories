@@ -1,4 +1,4 @@
-import { parseAccountImport } from './accountImport.ts';
+import { normalizeTag, parseAccountImport } from './accountImport.ts';
 import {
   BoostError,
   getBoostDurationMs,
@@ -11,7 +11,9 @@ import {
 } from './boosts.ts';
 import type {
   Account,
+  AccountApiMetadata,
   AccountBoost,
+  AccountMetadataInput,
   AccountUpgrade,
   AccountsSnapshot,
   BoostKind,
@@ -35,6 +37,7 @@ type StoredAccount = {
   sourceTimestamp: number | null;
   lastImportAt: number;
   createdAt: number;
+  api?: AccountApiMetadata;
 };
 
 type StoredUpgrade = {
@@ -325,6 +328,7 @@ async function readAccount(
     townHall: record.townHall,
     lastImportAt: record.lastImportAt,
     createdAt: record.createdAt,
+    api: record.api,
     upgrades,
     boosts,
   };
@@ -353,6 +357,7 @@ export async function importAccount(
         sourceTimestamp: parsed.sourceTimestamp,
         lastImportAt: now,
         createdAt: existing?.createdAt ?? now,
+        api: existing?.api,
       } satisfies StoredAccount);
 
       await deleteByIndex(upgradesStore, ACCOUNT_TAG_INDEX, parsed.tag);
@@ -373,6 +378,20 @@ export async function importAccount(
         } satisfies NewStoredUpgrade);
       }
 
+      for (const boost of parsed.boosts) {
+        if (boost.endsAt <= now) continue;
+
+        boostsStore.add({
+          accountTag: parsed.tag,
+          kind: boost.kind,
+          multiplier: boost.multiplier,
+          quantity: boost.quantity,
+          startedAt: boost.startedAt,
+          endsAt: boost.endsAt,
+          createdAt: now,
+        } satisfies NewStoredBoost);
+      }
+
       const account = await readAccount(transaction, parsed.tag, now);
 
       if (!account) {
@@ -383,6 +402,41 @@ export async function importAccount(
         account,
         importedUpgrades: parsed.upgrades.length,
       };
+    },
+  );
+}
+
+export async function syncAccountMetadata(
+  tag: string,
+  metadata: AccountMetadataInput,
+  now = Date.now(),
+): Promise<Account | null> {
+  const normalized = normalizeTag(tag);
+
+  if (!normalized) {
+    throw new DatabaseError('Tag desa tidak valid.');
+  }
+
+  return withTransaction(
+    [ACCOUNTS_STORE, UPGRADES_STORE, BOOSTS_STORE],
+    'readwrite',
+    async (transaction) => {
+      const accountsStore = transaction.objectStore(ACCOUNTS_STORE);
+      const existing = (await requestResult(
+        accountsStore.get(normalized),
+      )) as StoredAccount | undefined;
+
+      if (!existing) return null;
+
+      accountsStore.put({
+        ...existing,
+        api: {
+          ...metadata,
+          updatedAt: now,
+        },
+      } satisfies StoredAccount);
+
+      return readAccount(transaction, normalized, now);
     },
   );
 }
@@ -435,6 +489,7 @@ export async function listAccounts(now = Date.now()): Promise<AccountsSnapshot> 
           townHall: record.townHall,
           lastImportAt: record.lastImportAt,
           createdAt: record.createdAt,
+          api: record.api,
           upgrades: (upgradesByAccount.get(record.tag) ?? []).sort(compareByEndsAt),
           boosts: (boostsByAccount.get(record.tag) ?? []).sort(compareByEndsAt),
         }));

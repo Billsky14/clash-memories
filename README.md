@@ -1,7 +1,9 @@
 # clash-monitoring
 
-React client for Clash Monitor. It is fully client-side: account, upgrade, and boost
-data live in the browser's IndexedDB, so no backend or API server is required.
+React client for Clash Monitor. Its account, upgrade, and boost data live in the
+browser's IndexedDB, so no backend database or API server is required. An optional
+Vite-only proxy can fetch village metadata from the Supercell API during local
+development and preview.
 
 ## Commands
 
@@ -28,6 +30,36 @@ browser storage eviction. The app requests persistent storage as a best-effort.
 
 This architecture does not migrate data from the old SQLite backend. Re-import
 each village JSON once after upgrading.
+
+## Village metadata from the Supercell API
+
+Village names, clans, Town Hall levels, trophies, and leagues can be fetched from
+the official Clash of Clans API. The token stays on the local Vite server; it is
+never sent to the browser.
+
+1. Create an API key at <https://developer.clashofclans.com> and allowlist the
+   public IP of the computer running the app.
+2. Copy `.env.example` to `.env.local` and fill in the token:
+   ```env
+   COC_API_TOKEN=your-token
+   ```
+3. Run `npm run dev` or `npm run preview`.
+
+The tracker automatically syncs accounts that do not have metadata yet. Use the
+`Sinkron desa` button to refresh every village. Player responses are cached for
+60 seconds; a manual sync bypasses the cache.
+
+Limitations:
+
+- The token is bound to the allowlisted IP. If your public IP changes, update the
+  key at the developer site. Some ISPs rotate between several public IPs (common
+  on mobile/CGNAT); add every IP shown in the error message to the key (up to 10
+  addresses) or use a connection with a stable public IP.
+- The proxy only exists in `npm run dev` and `npm run preview`. A static deploy
+  such as Vercel cannot fetch API data; the manual sync action is hidden when the
+  proxy is unreachable, and automatic metadata sync is skipped.
+- The official API does not expose active upgrade timers. Timers still come from
+  the in-game JSON export.
 
 ## Timer behavior
 

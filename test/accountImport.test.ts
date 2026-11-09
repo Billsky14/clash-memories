@@ -66,6 +66,33 @@ describe('parseAccountImport', () => {
     expect(assistedGiantBomb?.helperRecurrent).toBe(true);
   });
 
+  it('preserves building data ids and levels from the pasted snapshot', () => {
+    const result = parseAccountImport(
+      {
+        tag: '#ABC123',
+        buildings: [
+          { data: 1000068, lvl: 11, timer: 3600 },
+          { data: 1000006, lvl: 18, timer: 3600 },
+          { data: 1000007, lvl: 13, timer: 3600 },
+        ],
+      },
+      NOW,
+    );
+
+    expect(
+      result.upgrades.map(({ dataId, level, category, base }) => ({
+        dataId,
+        level,
+        category,
+        base,
+      })),
+    ).toEqual([
+      { dataId: 1000068, level: 11, category: 'buildings', base: 'home' },
+      { dataId: 1000006, level: 18, category: 'buildings', base: 'home' },
+      { dataId: 1000007, level: 13, category: 'buildings', base: 'home' },
+    ]);
+  });
+
   it('anchors countdowns to the snapshot timestamp instead of import time', () => {
     const snapshotSeconds = NOW / 1000 - 3600;
     const result = parseAccountImport(
@@ -93,6 +120,102 @@ describe('parseAccountImport', () => {
     );
 
     expect(result.upgrades).toEqual([]);
+  });
+
+  it('compresses home timers with the exported builder potion', () => {
+    const result = parseAccountImport(
+      {
+        tag: '#PPYJV8QCR',
+        timestamp: SNAPSHOT_TIMESTAMP,
+        buildings: [{ data: 1000071, lvl: 10, timer: 135042 }],
+        units: [{ data: 4000008, lvl: 10, timer: 135042 }],
+        pets: [{ data: 73000004, lvl: 8, timer: 135042 }],
+        buildings2: [{ data: 1000036, lvl: 7, timer: 135042 }],
+        boosts: { builder_boost: 4102 },
+      },
+      NOW,
+    );
+
+    expect(result.boosts).toEqual([
+      {
+        kind: 'builder',
+        multiplier: 10,
+        quantity: 2,
+        remainingSeconds: 4102,
+        startedAt: (SNAPSHOT_TIMESTAMP + 4102 - 7200) * 1000,
+        endsAt: (SNAPSHOT_TIMESTAMP + 4102) * 1000,
+      },
+    ]);
+
+    const home = result.upgrades.find(
+      (upgrade) => upgrade.category === 'buildings',
+    );
+    const lab = result.upgrades.find((upgrade) => upgrade.category === 'units');
+    const pet = result.upgrades.find((upgrade) => upgrade.category === 'pets');
+    const builderBase = result.upgrades.find(
+      (upgrade) => upgrade.category === 'buildings2',
+    );
+
+    expect(home?.remainingSeconds).toBe(135042);
+    expect(home?.endsAt).toBe((SNAPSHOT_TIMESTAMP + 98124) * 1000);
+    expect(lab?.endsAt).toBe((SNAPSHOT_TIMESTAMP + 135042) * 1000);
+    expect(pet?.endsAt).toBe((SNAPSHOT_TIMESTAMP + 135042) * 1000);
+    expect(builderBase?.endsAt).toBe(
+      (SNAPSHOT_TIMESTAMP + 135042) * 1000,
+    );
+  });
+
+  it('maps lab and pet potions to their own groups', () => {
+    const result = parseAccountImport(
+      {
+        tag: '#ABC123',
+        timestamp: SNAPSHOT_TIMESTAMP,
+        buildings: [{ data: 1000004, lvl: 16, timer: 10000 }],
+        units: [{ data: 4000008, lvl: 10, timer: 86400 }],
+        pets: [{ data: 73000004, lvl: 8, timer: 43200 }],
+        boosts: { lab_boost: 3600, pet_boost: 1800 },
+      },
+      NOW,
+    );
+
+    expect(result.boosts.map((boost) => boost.kind)).toEqual([
+      'laboratory',
+      'pet',
+    ]);
+
+    const home = result.upgrades.find(
+      (upgrade) => upgrade.category === 'buildings',
+    );
+    const lab = result.upgrades.find((upgrade) => upgrade.category === 'units');
+    const pet = result.upgrades.find((upgrade) => upgrade.category === 'pets');
+
+    expect(home?.endsAt).toBe((SNAPSHOT_TIMESTAMP + 10000) * 1000);
+    expect(lab?.endsAt).toBe((SNAPSHOT_TIMESTAMP + 3600) * 1000);
+    expect(pet?.endsAt).toBe((SNAPSHOT_TIMESTAMP + 1800) * 1000);
+  });
+
+  it('ignores invalid and unrelated boost values', () => {
+    const result = parseAccountImport(
+      {
+        tag: '#ABC123',
+        timestamp: SNAPSHOT_TIMESTAMP,
+        buildings: [{ data: 1000004, lvl: 16, timer: 7200 }],
+        boosts: {
+          builder_boost: 0,
+          lab_boost: '3600',
+          pet_boost: -1,
+          clocktower_boost: 999,
+          builder_consumable: 120,
+          helper_cooldown: 50,
+        },
+      },
+      NOW,
+    );
+
+    expect(result.boosts).toEqual([]);
+    expect(result.upgrades[0].endsAt).toBe(
+      (SNAPSHOT_TIMESTAMP + 7200) * 1000,
+    );
   });
 
   it('falls back to import time when the snapshot timestamp is missing', () => {
@@ -127,6 +250,7 @@ describe('parseAccountImport', () => {
     expect(result.upgrades.some((upgrade) => upgrade.dataId === 93000000)).toBe(false);
     expect(result.upgrades.some((upgrade) => upgrade.dataId === 1000013)).toBe(false);
     expect(result.upgrades.some((upgrade) => upgrade.category === 'boosts')).toBe(false);
+    expect(result.boosts).toEqual([]);
   });
 
   it('uses builder base for categories ending in 2', () => {

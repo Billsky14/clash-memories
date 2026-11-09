@@ -25,11 +25,28 @@ export type AccountBoost = {
   endsAt: number;
 };
 
+export type AccountApiMetadata = {
+  name: string;
+  townHallLevel: number | null;
+  expLevel: number | null;
+  trophies: number | null;
+  bestTrophies: number | null;
+  warStars: number | null;
+  clanTag: string | null;
+  clanName: string | null;
+  clanLevel: number | null;
+  leagueName: string | null;
+  updatedAt: number;
+};
+
+export type AccountMetadataInput = Omit<AccountApiMetadata, 'updatedAt'>;
+
 export type Account = {
   tag: string;
   townHall: number | null;
   lastImportAt: number;
   createdAt: number;
+  api?: AccountApiMetadata;
   upgrades: AccountUpgrade[];
   boosts: AccountBoost[];
 };
