@@ -39,7 +39,7 @@ const primaryButtonClass =
 const secondaryButtonClass =
   'inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-transparent px-2.5 py-[7px] text-[11.5px] font-semibold whitespace-nowrap text-heading hover:bg-[rgba(127,127,127,0.06)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:size-3.5';
 
-const gridClass = 'grid gap-4 min-[760px]:grid-cols-2 min-[1100px]:grid-cols-3';
+const gridClass = 'grid items-start gap-4 min-[760px]:grid-cols-2 min-[1100px]:grid-cols-3';
 
 const errorPanelClass =
   'rounded-xl border border-[#dc2626]/30 bg-[rgba(220,38,38,0.08)] px-4 py-3 text-[12px] text-[#b91c1c] dark:text-[#f87171]';
