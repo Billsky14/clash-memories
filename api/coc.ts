@@ -1,13 +1,14 @@
 const DEFAULT_API_BASE = 'https://cocproxy.royaleapi.dev/v1';
 const UPSTREAM_TIMEOUT_MS = 15_000;
 const PLAYER_TAG_PATTERN = /^#[0-9A-Z]{3,15}$/;
+const PLAYER_CACHE_CONTROL = 'public, s-maxage=60, stale-while-revalidate=300';
 
-function json(status: number, body: unknown): Response {
+function json(status: number, body: unknown, cacheControl = 'no-store'): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store',
+      'Cache-Control': cacheControl,
       'X-Content-Type-Options': 'nosniff',
     },
   });
@@ -151,6 +152,7 @@ export async function GET(request: Request): Promise<Response> {
   const upstreamParams = new URLSearchParams(incoming.searchParams);
   upstreamParams.delete('cocPath');
   const upstreamQuery = upstreamParams.toString();
+  const bypassCache = incoming.searchParams.has('refresh');
   const target = `${baseUrl}/players/${encodeURIComponent(tag)}${upstreamQuery ? `?${upstreamQuery}` : ''}`;
 
   let upstream: Response;
@@ -193,5 +195,5 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  return json(200, payload);
+  return json(200, payload, bypassCache ? 'no-store' : PLAYER_CACHE_CONTROL);
 }

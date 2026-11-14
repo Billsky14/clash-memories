@@ -39,7 +39,26 @@ describe('Vercel CoC proxy', () => {
       Authorization: `Bearer ${TOKEN}`,
     });
     expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
     expect(await response.json()).toEqual({ tag: '#ABC123', name: 'Desa Uji' });
+  });
+
+  it('allows the CDN to cache player responses for 60 seconds', async () => {
+    vi.stubEnv('COC_API_TOKEN', TOKEN);
+    vi.stubEnv('COC_API_BASE', '');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse({ tag: '#ABC123', name: 'Desa Uji' })),
+    );
+
+    const response = await GET(
+      new Request('https://app.example/api/coc/players/%23ABC123'),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe(
+      'public, s-maxage=60, stale-while-revalidate=300',
+    );
   });
 
   it('uses a custom API base and trims trailing slashes', async () => {
@@ -117,6 +136,7 @@ describe('Vercel CoC proxy', () => {
     const response = await GET(new Request('https://app.example/api/coc/status'));
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
     expect(await response.json()).toEqual({ configured: true });
     expect(fetchMock).not.toHaveBeenCalled();
   });

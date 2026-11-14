@@ -80,7 +80,8 @@ Browser -> /api/coc/* -> Vite proxy -> local backend -> cocproxy.royaleapi.dev -
 
 The tracker automatically syncs accounts that do not have metadata yet. Use the
 `Sinkron desa` button to refresh every village. Player responses are cached for
-60 seconds; a manual sync sends `?refresh=1`.
+60 seconds by the local backend or the Vercel CDN; a manual sync sends
+`?refresh=1` to bypass that cache.
 
 Limitations:
 
