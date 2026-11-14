@@ -37,7 +37,10 @@ export type AccountApiMetadata = {
   clanLevel: number | null;
   leagueName: string | null;
   updatedAt: number;
+  version?: number;
 };
+
+export type ApiStatus = 'checking' | 'online' | 'unconfigured' | 'offline';
 
 export type AccountMetadataInput = Omit<AccountApiMetadata, 'updatedAt'>;
 

@@ -101,6 +101,7 @@ describe('CoC player mapping', () => {
       clanLevel: 10,
       leagueName: 'P.E.K.K.A League 23',
       updatedAt: 1_700_000_000_000,
+      version: 1,
     });
   });
 });

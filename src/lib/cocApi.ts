@@ -1,3 +1,4 @@
+import { METADATA_VERSION } from './metadata.ts';
 import type { AccountApiMetadata } from './types.ts';
 
 export type CocPlayerSummary = {
@@ -150,6 +151,7 @@ export function toAccountMetadata(
     clanLevel: player.clan?.clanLevel ?? null,
     leagueName: player.leagueName,
     updatedAt: now,
+    version: METADATA_VERSION,
   };
 }
 

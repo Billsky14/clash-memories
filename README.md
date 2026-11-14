@@ -78,16 +78,26 @@ Browser -> /api/coc/* -> Vite proxy -> local backend -> cocproxy.royaleapi.dev -
 
 5. Run `npm run dev` or `npm run preview` from this repository.
 
-The tracker automatically syncs accounts that do not have metadata yet. Use the
-`Sinkron desa` button to refresh every village. Player responses are cached for
-60 seconds by the local backend or the Vercel CDN; a manual sync sends
-`?refresh=1` to bypass that cache.
+The tracker has no manual refresh or sync button. On load it reads IndexedDB
+first, checks `/api/coc/status` once, and then fetches player metadata only for
+villages that have none yet or whose stored metadata is older than
+`METADATA_VERSION` (in `src/lib/metadata.ts`). Adjusting that constant refreshes
+metadata exactly once for every village after the next release. Successful syncs
+are silent, and existing metadata is never fetched again. Retrying is done by
+reloading the page. Player responses are cached for 60 seconds by the local
+backend or the Vercel CDN.
+
+The sidebar footer shows a small, non-clickable API indicator: gray pulsing while
+checking, green when the proxy is reachable and `COC_API_TOKEN` is set, amber
+when the proxy is reachable but the token is missing, and red when the proxy
+cannot be reached. It only reflects `/status`; a stale token can stay green until
+a player request fails.
 
 Limitations:
 
 - The RoyaleAPI proxy is a free community service without an SLA. If it is
-  unavailable, the manual sync action is hidden and automatic metadata sync is
-  skipped; timers and boosts keep working from IndexedDB.
+  unavailable, the indicator turns red, automatic metadata sync is skipped, and
+  timers and boosts keep working from IndexedDB.
 - The official API does not expose active upgrade timers. Timers still come from
   the in-game JSON export.
 

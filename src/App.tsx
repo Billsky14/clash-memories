@@ -7,6 +7,7 @@ import {
   isLandingSectionId,
   navigate,
 } from './lib/navigation.ts';
+import type { ApiStatus } from './lib/types.ts';
 import Landing from './pages/Landing.tsx';
 import Tracker from './pages/Tracker.tsx';
 
@@ -57,8 +58,54 @@ const navItems = [
   },
 ];
 
+const apiStatusMeta: Record<
+  ApiStatus,
+  { dotClass: string; label: string; title: string }
+> = {
+  checking: {
+    dotClass: 'animate-pulse bg-[#6b7280]',
+    label: 'Memeriksa status API',
+    title: 'Memeriksa status API Supercell',
+  },
+  online: {
+    dotClass: 'bg-[#4ade80]',
+    label: 'API Supercell aktif',
+    title: 'API Supercell aktif',
+  },
+  unconfigured: {
+    dotClass: 'bg-gold',
+    label: 'Token API belum diset',
+    title: 'Proxy API terjangkau, tetapi COC_API_TOKEN belum diset',
+  },
+  offline: {
+    dotClass: 'bg-[#f87171]',
+    label: 'API Supercell tidak dapat dihubungi',
+    title: 'API Supercell tidak dapat dihubungi',
+  },
+};
+
+function ApiStatusIndicator({ status }: { status: ApiStatus }) {
+  const meta = apiStatusMeta[status];
+
+  return (
+    <span
+      className="flex items-center gap-1.5"
+      title={meta.title}
+      role="status"
+      aria-live="polite"
+      aria-label={meta.label}
+    >
+      <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${meta.dotClass}`} />
+      <span aria-hidden="true" className="text-[10px] font-semibold tracking-[0.1em] uppercase">
+        API
+      </span>
+    </span>
+  );
+}
+
 export default function App() {
   const [pathname, setPathname] = useState(() => window.location.pathname);
+  const [apiStatus, setApiStatus] = useState<ApiStatus>('checking');
   const page = getPageFromPath(pathname);
   const section = getLandingSectionFromPath(pathname);
   const isTracker = page === 'tracker';
@@ -197,8 +244,9 @@ export default function App() {
         </nav>
 
         {!isCollapsed && (
-          <div className="mt-auto flex items-center gap-2 border-t border-white/8 px-2.5 pt-3.5 pb-1 text-[11.5px] text-[#6b7280] max-[760px]:hidden">
-            Copyright©{currentYear} 愛Memories.
+          <div className="mt-auto flex flex-col gap-2 border-t border-white/8 px-2.5 pt-3.5 pb-1 text-[11.5px] text-[#6b7280] max-[760px]:hidden">
+            <span>Copyright©{currentYear} 愛Memories.</span>
+            <ApiStatusIndicator status={apiStatus} />
           </div>
         )}
       </aside>
@@ -224,7 +272,11 @@ export default function App() {
               : 'w-full min-w-0'
           }
         >
-          {isTracker ? <Tracker /> : <Landing />}
+          {isTracker ? (
+            <Tracker apiStatus={apiStatus} onApiStatusChange={setApiStatus} />
+          ) : (
+            <Landing />
+          )}
         </main>
       </div>
     </div>

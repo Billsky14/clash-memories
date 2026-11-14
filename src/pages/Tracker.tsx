@@ -20,9 +20,11 @@ import {
   requestPersistentStorage,
   syncAccountMetadata,
 } from '../lib/database.ts';
+import { needsMetadataSync } from '../lib/metadata.ts';
 import type {
   Account,
   AccountUpgrade,
+  ApiStatus,
   BoostKind,
   BoostResult,
   ImportResult,
@@ -36,20 +38,17 @@ const toolbarClass =
 const primaryButtonClass =
   'inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-gold px-3.5 py-[9px] text-[12.5px] font-bold whitespace-nowrap text-[#2b1a02] transition-[filter] duration-150 hover:brightness-[1.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-60';
 
-const secondaryButtonClass =
-  'inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-transparent px-2.5 py-[7px] text-[11.5px] font-semibold whitespace-nowrap text-heading hover:bg-[rgba(127,127,127,0.06)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:size-3.5';
-
 const gridClass = 'grid items-start gap-4 min-[760px]:grid-cols-2 min-[1100px]:grid-cols-3';
 
 const errorPanelClass =
   'rounded-xl border border-[#dc2626]/30 bg-[rgba(220,38,38,0.08)] px-4 py-3 text-[12px] text-[#b91c1c] dark:text-[#f87171]';
 
-type ApiAvailability = {
-  reachable: boolean;
-  configured: boolean;
+type TrackerProps = {
+  apiStatus: ApiStatus;
+  onApiStatusChange: (status: ApiStatus) => void;
 };
 
-export default function Tracker() {
+export default function Tracker({ apiStatus, onApiStatusChange }: TrackerProps) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,14 +60,11 @@ export default function Tracker() {
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [syncingMetadata, setSyncingMetadata] = useState(false);
-  const [apiAvailability, setApiAvailability] = useState<ApiAvailability | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const toastIdRef = useRef(0);
   const syncingMetadataRef = useRef(false);
   const metadataSyncAttemptedRef = useRef(new Set<string>());
-  const apiReachable = apiAvailability?.reachable === true;
-  const apiConfigured = apiAvailability?.configured === true;
 
   const addToast = useCallback((toast: Omit<ToastMessage, 'id'>) => {
     const id = ++toastIdRef.current;
@@ -101,47 +97,35 @@ export default function Tracker() {
   const checkApiStatus = useCallback(async () => {
     try {
       const status = await getApiStatus();
-      setApiAvailability({ reachable: true, configured: status.configured });
+      onApiStatusChange(status.configured ? 'online' : 'unconfigured');
     } catch {
-      setApiAvailability({ reachable: false, configured: false });
+      onApiStatusChange('offline');
     }
-  }, []);
+  }, [onApiStatusChange]);
 
-  const refresh = useCallback(() => {
-    setLoading(true);
+  const reload = useCallback(() => {
     void loadAccounts();
     void checkApiStatus();
   }, [checkApiStatus, loadAccounts]);
 
   const syncMetadata = useCallback(
-    async (targets: Account[], silent = false) => {
+    async (targets: Account[]) => {
       if (targets.length === 0 || syncingMetadataRef.current) return;
 
       syncingMetadataRef.current = true;
       setSyncingMetadata(true);
 
-      let updatedCount = 0;
       const failures: string[] = [];
 
       try {
         const status = await getApiStatus();
-        setApiAvailability({ reachable: true, configured: status.configured });
+        onApiStatusChange(status.configured ? 'online' : 'unconfigured');
 
-        if (!status.configured) {
-          if (!silent) {
-            addToast({
-              title: 'Token API belum diset',
-              detail:
-                'Tambahkan COC_API_TOKEN di backend/.env.local, lalu jalankan ulang backend.',
-              tone: 'error',
-            });
-          }
-          return;
-        }
+        if (!status.configured) return;
 
         for (const account of targets) {
           try {
-            const player = await getPlayer(account.tag, !silent);
+            const player = await getPlayer(account.tag);
             const updatedAccount = await syncAccountMetadata(
               account.tag,
               toAccountMetadata(player),
@@ -149,42 +133,30 @@ export default function Tracker() {
 
             if (!updatedAccount) continue;
 
-            updatedCount += 1;
             setAccounts((current) =>
               current.map((item) =>
                 item.tag === updatedAccount.tag ? updatedAccount : item,
               ),
             );
           } catch (syncError) {
-            if (!(silent && isCocProxyUnavailable(syncError))) {
+            if (isCocProxyUnavailable(syncError)) {
+              onApiStatusChange('offline');
+            } else {
               failures.push(getCocApiErrorMessage(syncError));
             }
           }
         }
-      } catch (statusError) {
-        setApiAvailability({ reachable: false, configured: false });
-        if (!(silent && isCocProxyUnavailable(statusError))) {
-          failures.push(getCocApiErrorMessage(statusError));
-        }
+      } catch {
+        onApiStatusChange('offline');
+        return;
       } finally {
         syncingMetadataRef.current = false;
         setSyncingMetadata(false);
       }
 
-      if (updatedCount > 0) {
-        addToast({
-          title: `${updatedCount} desa diperbarui`,
-          detail: 'Nama dan detail desa diambil dari API Supercell.',
-          tone: 'success',
-        });
-      }
-
       if (failures.length > 0) {
         addToast({
-          title:
-            updatedCount > 0
-              ? 'Sebagian desa gagal diperbarui'
-              : 'Gagal mengambil detail desa',
+          title: 'Gagal mengambil detail desa',
           detail:
             failures.length > 1
               ? `${failures[0]} (${failures.length - 1} desa lainnya gagal)`
@@ -193,7 +165,7 @@ export default function Tracker() {
         });
       }
     },
-    [addToast],
+    [addToast, onApiStatusChange],
   );
 
   useEffect(() => {
@@ -204,11 +176,11 @@ export default function Tracker() {
   }, [checkApiStatus, loadAccounts]);
 
   useEffect(() => {
-    if (loading || syncingMetadata || !apiConfigured) return;
+    if (loading || syncingMetadata || apiStatus !== 'online') return;
 
     const pending = accounts.filter(
       (account) =>
-        !account.api && !metadataSyncAttemptedRef.current.has(account.tag),
+        needsMetadataSync(account) && !metadataSyncAttemptedRef.current.has(account.tag),
     );
 
     if (pending.length === 0) return;
@@ -217,8 +189,8 @@ export default function Tracker() {
       metadataSyncAttemptedRef.current.add(account.tag);
     }
 
-    void syncMetadata(pending, true);
-  }, [accounts, apiConfigured, loading, syncingMetadata, syncMetadata]);
+    void syncMetadata(pending);
+  }, [accounts, apiStatus, loading, syncingMetadata, syncMetadata]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 1_000);
@@ -252,9 +224,9 @@ export default function Tracker() {
         detail: `${result.importedUpgrades} upgrade aktif.${boostDetail}`,
         tone: 'success',
       });
-      refresh();
+      reload();
     },
-    [accounts, addToast, importTarget, refresh],
+    [accounts, addToast, importTarget, reload],
   );
 
   const handleUpdateAccount = useCallback((account: Account) => {
@@ -279,9 +251,9 @@ export default function Tracker() {
           : `${result.affectedUpgrades} upgrade di ${spec.groupLabel} dipercepat ${result.boost.multiplier}x selama ${result.boost.quantity} jam.`,
         tone: 'success',
       });
-      refresh();
+      reload();
     },
-    [addToast, refresh],
+    [addToast, reload],
   );
 
   const handleDeleteAccount = useCallback((account: Account) => {
@@ -305,7 +277,7 @@ export default function Tracker() {
         detail: 'Semua timer akun ini berhenti dipantau.',
         tone: 'info',
       });
-      refresh();
+      reload();
     } catch (deleteError) {
       addToast({
         title: 'Gagal menghapus akun',
@@ -316,7 +288,7 @@ export default function Tracker() {
     } finally {
       setDeleting(false);
     }
-  }, [addToast, deleteTarget, refresh]);
+  }, [addToast, deleteTarget, reload]);
 
   const handleDismissUpgrade = useCallback(
     async (upgrade: AccountUpgrade) => {
@@ -364,33 +336,6 @@ export default function Tracker() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className={secondaryButtonClass}
-            onClick={refresh}
-            disabled={loading}
-          >
-            <Icon>
-              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-              <path d="M21 3v6h-6" />
-            </Icon>
-            {loading ? 'Memuat...' : 'Perbarui'}
-          </button>
-          {apiReachable && (
-            <button
-              type="button"
-              className={secondaryButtonClass}
-              onClick={() => void syncMetadata(accounts)}
-              disabled={loading || syncingMetadata || accounts.length === 0}
-              title="Ambil nama dan detail desa dari API Supercell"
-            >
-              <Icon>
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </Icon>
-              {syncingMetadata ? 'Sinkron...' : 'Sinkron desa'}
-            </button>
-          )}
           <button type="button" className={primaryButtonClass} onClick={() => setImportTarget({})}>
             <Icon>
               <path d="M12 5v14" />
@@ -408,7 +353,7 @@ export default function Tracker() {
           <button
             type="button"
             className="mt-2 cursor-pointer font-semibold underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
-            onClick={refresh}
+            onClick={reload}
           >
             Coba lagi
           </button>
@@ -445,7 +390,7 @@ export default function Tracker() {
               </h3>
               <p className="mt-1 text-[12px] text-body">{error}</p>
             </div>
-            <button type="button" className={primaryButtonClass} onClick={refresh}>
+            <button type="button" className={primaryButtonClass} onClick={reload}>
               Coba lagi
             </button>
           </div>
@@ -481,9 +426,7 @@ export default function Tracker() {
               key={account.tag}
               account={account}
               now={now}
-              metadataLoading={
-                !account.api && (syncingMetadata || apiAvailability === null)
-              }
+              metadataLoading={!account.api && (syncingMetadata || apiStatus === 'checking')}
               onUpdate={handleUpdateAccount}
               onDelete={handleDeleteAccount}
               onBoost={handleBoost}
