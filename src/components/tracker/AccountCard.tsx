@@ -13,6 +13,7 @@ import Icon from '../common/Icon.tsx';
 type AccountCardProps = {
   account: Account;
   now: number;
+  metadataLoading: boolean;
   onUpdate: (account: Account) => void;
   onDelete: (account: Account) => void;
   onBoost: (account: Account, kind: BoostKind) => void;
@@ -37,6 +38,8 @@ const boostButtonClass =
 const activeBoostClass =
   'inline-flex cursor-pointer items-center gap-1 rounded-md bg-gold px-2 py-1 text-[10px] font-bold tabular-nums text-[#2b1a02] transition-[filter] duration-150 hover:brightness-[1.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold [&_svg]:size-3';
 
+const skeletonClass = 'block animate-pulse bg-[rgba(127,127,127,0.12)]';
+
 const lightningPath = <path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z" />;
 
 function getCountdownTone(remainingMs: number): string {
@@ -59,6 +62,7 @@ function groupUpgrades(upgrades: AccountUpgrade[]): GroupedUpgrades[] {
 export default function AccountCard({
   account,
   now,
+  metadataLoading,
   onUpdate,
   onDelete,
   onBoost,
@@ -74,29 +78,57 @@ export default function AccountCard({
   const townHall = api?.townHallLevel ?? account.townHall;
 
   return (
-    <section className={panelClass} aria-label={`Akun ${displayName} (${account.tag})`}>
+    <section
+      className={panelClass}
+      aria-label={`Akun ${displayName} (${account.tag})`}
+      aria-busy={metadataLoading || undefined}
+    >
       <div className={panelHeadClass}>
-        <div className="min-w-0">
-          <h2 className="m-0 truncate text-[15px] font-semibold tracking-[-0.01em] text-heading">
-            {displayName}
-          </h2>
-          <p className={`${panelSubtitleClass} truncate`}>
-            <span className="font-mono">{account.tag}</span>
-            {api?.clanName && <> · {api.clanName}</>}
-            {api?.leagueName && <> · {api.leagueName}</>}
-          </p>
-          <p className="mt-0.5 text-[10.5px] text-body">
-            {api
-              ? `Detail desa ${formatRelativeTime(api.updatedAt, now)}`
-              : account.lastImportAt > 0
-                ? `Diperbarui ${formatRelativeTime(account.lastImportAt, now)}`
-                : 'Belum ada impor timer'}
-          </p>
-        </div>
+        {metadataLoading ? (
+          <div className="min-w-0 flex-1">
+            <h2 className="m-0" aria-label={`Memuat detail desa ${account.tag}`}>
+              <span
+                aria-hidden="true"
+                className={`${skeletonClass} h-[17px] w-40 max-w-[75%] rounded`}
+              />
+            </h2>
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-mono text-[11.5px] text-body">{account.tag}</span>
+              <span aria-hidden="true" className={`${skeletonClass} h-2.5 w-20 rounded`} />
+              <span aria-hidden="true" className={`${skeletonClass} h-2.5 w-14 rounded`} />
+            </div>
+            <span aria-hidden="true" className={`${skeletonClass} mt-2 h-2.5 w-28 rounded`} />
+          </div>
+        ) : (
+          <div className="min-w-0">
+            <h2 className="m-0 truncate text-[15px] font-semibold tracking-[-0.01em] text-heading">
+              {displayName}
+            </h2>
+            <p className={`${panelSubtitleClass} truncate`}>
+              <span className="font-mono">{account.tag}</span>
+              {api?.clanName && <> · {api.clanName}</>}
+              {api?.leagueName && <> · {api.leagueName}</>}
+            </p>
+            <p className="mt-0.5 text-[10.5px] text-body">
+              {api
+                ? `Detail desa ${formatRelativeTime(api.updatedAt, now)}`
+                : account.lastImportAt > 0
+                  ? `Diperbarui ${formatRelativeTime(account.lastImportAt, now)}`
+                  : 'Belum ada impor timer'}
+            </p>
+          </div>
+        )}
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           {townHall !== null && <span className={thBadgeClass}>TH {townHall}</span>}
-          {api?.trophies != null && (
-            <span className={thBadgeClass}>{api.trophies.toLocaleString('id-ID')} Trofi</span>
+          {metadataLoading ? (
+            <span
+              aria-hidden="true"
+              className={`${skeletonClass} h-[22px] w-[68px] rounded-md`}
+            />
+          ) : (
+            api?.trophies != null && (
+              <span className={thBadgeClass}>{api.trophies.toLocaleString('id-ID')} Trofi</span>
+            )
           )}
           <span className="rounded-full bg-chip-bg px-2 py-1 text-[10px] font-semibold text-chip-fg">
             {upgrades.length} Peningkatan

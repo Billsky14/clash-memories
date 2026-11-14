@@ -481,6 +481,9 @@ export default function Tracker() {
               key={account.tag}
               account={account}
               now={now}
+              metadataLoading={
+                !account.api && (syncingMetadata || apiAvailability === null)
+              }
               onUpdate={handleUpdateAccount}
               onDelete={handleDeleteAccount}
               onBoost={handleBoost}
