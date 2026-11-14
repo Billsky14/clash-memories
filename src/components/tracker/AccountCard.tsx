@@ -87,6 +87,7 @@ export default function AccountCard({
   const api = account.api;
   const displayName = api?.name ?? account.tag;
   const townHall = api?.townHallLevel ?? account.townHall;
+  const apiSubtitle = api ? [api.clanName, api.leagueName].filter(Boolean).join(' · ') : '';
 
   return (
     <section
@@ -115,17 +116,19 @@ export default function AccountCard({
             <h2 className="m-0 truncate text-[15px] font-semibold tracking-[-0.01em] text-heading">
               {displayName}
             </h2>
-            <p className={`${panelSubtitleClass} break-words`}>
-              <span className="font-mono">{account.tag}</span>
-              {api?.clanName && <> · {api.clanName}</>}
-              {api?.leagueName && <> · {api.leagueName}</>}
-            </p>
+            {(!api || apiSubtitle) && (
+              <p className={`${panelSubtitleClass} break-words`}>
+                {api ? apiSubtitle : <span className="font-mono">{account.tag}</span>}
+              </p>
+            )}
             <p className="mt-0.5 text-[10.5px] text-body">
-              {api
-                ? `Detail desa ${formatRelativeTime(api.updatedAt, now)}`
-                : account.lastImportAt > 0
-                  ? `Diperbarui ${formatRelativeTime(account.lastImportAt, now)}`
-                  : 'Belum ada impor timer'}
+              {api ? (
+                <span className="font-mono">{account.tag}</span>
+              ) : account.lastImportAt > 0 ? (
+                `Diperbarui ${formatRelativeTime(account.lastImportAt, now)}`
+              ) : (
+                'Belum ada impor timer'
+              )}
             </p>
           </div>
         )}
