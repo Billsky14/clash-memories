@@ -39,6 +39,14 @@ function getUpstreamIp(payload: unknown): string | null {
   return match ? match[1] : null;
 }
 
+function getRequestPath(incoming: URL): string {
+  const rewritten = incoming.searchParams.get('cocPath');
+  const rawPath = rewritten ?? incoming.pathname.replace(/^\/api\/coc\/?/, '');
+  const normalized = rawPath.replace(/^\/+/, '').replace(/\/+$/, '');
+
+  return normalized ? `/${normalized}` : '/';
+}
+
 function mapUpstreamError(status: number, payload: unknown): Response {
   if (!isRecord(payload)) {
     return errorResponse(
@@ -102,9 +110,9 @@ export async function GET(request: Request): Promise<Response> {
   const baseUrl = (configuredBase || DEFAULT_API_BASE).replace(/\/+$/, '');
 
   const incoming = new URL(request.url);
-  const path = incoming.pathname.replace(/^\/api\/coc/, '');
+  const path = getRequestPath(incoming);
 
-  if (path === '/status' || path === '/status/') {
+  if (path === '/status') {
     return json(200, { configured: Boolean(token) });
   }
 
@@ -140,7 +148,10 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  const target = `${baseUrl}/players/${encodeURIComponent(tag)}${incoming.search}`;
+  const upstreamParams = new URLSearchParams(incoming.searchParams);
+  upstreamParams.delete('cocPath');
+  const upstreamQuery = upstreamParams.toString();
+  const target = `${baseUrl}/players/${encodeURIComponent(tag)}${upstreamQuery ? `?${upstreamQuery}` : ''}`;
 
   let upstream: Response;
 

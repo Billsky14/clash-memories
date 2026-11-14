@@ -117,7 +117,7 @@ rewrite of unknown paths to `index.html` so direct visits to `/tracker` work.
 
 ```text
 api/
-└─ coc/[...path].ts        # Vercel Function proxy to the RoyaleAPI proxy
+└─ coc.ts                  # Vercel Function proxy (reached via the /api/coc/:path* rewrite)
 src/
 ├─ App.tsx                 # app shell and path routing
 ├─ main.tsx

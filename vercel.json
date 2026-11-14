@@ -1,11 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/**/*.ts": {
+    "api/*.ts": {
       "maxDuration": 30
     }
   },
   "rewrites": [
+    {
+      "source": "/api/coc/:path*",
+      "destination": "/api/coc?cocPath=:path*"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

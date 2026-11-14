@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GET } from '../api/coc/[...path].ts';
+import { GET } from '../api/coc.ts';
 
 const TOKEN = 'test-token';
 const DEFAULT_BASE = 'https://cocproxy.royaleapi.dev/v1';
@@ -55,6 +55,58 @@ describe('Vercel CoC proxy', () => {
     expect(fetchMock.mock.calls[0][0]).toBe(
       'https://backend.example.ts.net/v1/players/%23ABC123',
     );
+  });
+
+  it('reads the rewrite path and does not forward cocPath upstream', async () => {
+    vi.stubEnv('COC_API_TOKEN', TOKEN);
+    vi.stubEnv('COC_API_BASE', '');
+    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) =>
+      jsonResponse({ tag: '#ABC123', name: 'Desa Uji' }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await GET(
+      new Request(
+        'https://app.example/api/coc?cocPath=players/%23ABC123&refresh=1',
+      ),
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${DEFAULT_BASE}/players/%23ABC123?refresh=1`,
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it('accepts a rewrite path without a leading hash and trims slashes', async () => {
+    vi.stubEnv('COC_API_TOKEN', TOKEN);
+    vi.stubEnv('COC_API_BASE', '');
+    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) =>
+      jsonResponse({ tag: '#ABC123', name: 'Desa Uji' }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await GET(
+      new Request('https://app.example/api/coc?cocPath=players/ABC123/'),
+    );
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${DEFAULT_BASE}/players/%23ABC123`,
+    );
+  });
+
+  it('reports status through the rewrite path', async () => {
+    vi.stubEnv('COC_API_TOKEN', TOKEN);
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await GET(
+      new Request('https://app.example/api/coc?cocPath=status'),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ configured: true });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('returns status without calling the upstream API', async () => {
