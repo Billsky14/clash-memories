@@ -16,6 +16,27 @@ export type CocPlayerSummary = {
   leagueName: string | null;
 };
 
+type CocPlayerApiResponse = {
+  tag: string;
+  name: string;
+  townHallLevel: number;
+  expLevel: number;
+  trophies: number;
+  bestTrophies: number;
+  warStars: number;
+  clan?: {
+    tag: string;
+    name: string;
+    clanLevel: number;
+  } | null;
+  leagueTier?: {
+    name?: string;
+  } | null;
+  league?: {
+    name?: string;
+  } | null;
+};
+
 export type CocApiStatus = {
   configured: boolean;
 };
@@ -94,9 +115,23 @@ export function getApiStatus(): Promise<CocApiStatus> {
   return requestJson<CocApiStatus>('/status');
 }
 
-export function getPlayer(tag: string, refresh = false): Promise<CocPlayerSummary> {
+export async function getPlayer(tag: string, refresh = false): Promise<CocPlayerSummary> {
   const query = refresh ? '?refresh=1' : '';
-  return requestJson<CocPlayerSummary>(`/players/${encodeURIComponent(tag)}${query}`);
+  const player = await requestJson<CocPlayerApiResponse>(
+    `/players/${encodeURIComponent(tag)}${query}`,
+  );
+
+  return {
+    tag: player.tag,
+    name: player.name,
+    townHallLevel: player.townHallLevel,
+    expLevel: player.expLevel,
+    trophies: player.trophies,
+    bestTrophies: player.bestTrophies,
+    warStars: player.warStars,
+    clan: player.clan ?? null,
+    leagueName: player.leagueTier?.name || player.league?.name || null,
+  };
 }
 
 export function toAccountMetadata(
