@@ -38,23 +38,33 @@ each village JSON once after upgrading.
 ## Village metadata from the Supercell API
 
 Village names, clans, Town Hall levels, trophies, and leagues can be synced from
-the official Clash of Clans API. The token stays in the local backend; it is
-never sent to the browser or to Vercel.
+the official Clash of Clans API through the RoyaleAPI proxy. The token stays
+server-side; it is never sent to the browser.
 
 Production flow:
 
 ```text
-Browser -> /api/coc/* -> Vercel Function -> Tailscale Funnel -> local backend -> Supercell
+Browser -> /api/coc/* -> Vercel Function -> cocproxy.royaleapi.dev -> Supercell
 ```
 
-Local development uses the Vite dev/preview proxy instead of the Vercel
-Function:
+Local development uses the Vite dev/preview proxy and the separate backend:
 
 ```text
-Browser -> /api/coc/* -> Vite proxy -> local backend -> Supercell
+Browser -> /api/coc/* -> Vite proxy -> local backend -> cocproxy.royaleapi.dev -> Supercell
 ```
 
-1. Start the backend in a separate terminal:
+1. Allowlist `45.79.218.79` (the RoyaleAPI proxy egress IP) on the Supercell API
+   key. Your own public IP does not need to be listed.
+
+2. For production, set this Vercel environment variable for Production and
+   Preview, then redeploy:
+
+   - `COC_API_TOKEN=<same token as the backend>`
+
+   `LOCAL_COC_API_URL` and `COC_PROXY_SECRET` are no longer used in production.
+   No Tailscale Funnel or running laptop is required.
+
+3. For local development, start the backend in a separate terminal:
 
    ```powershell
    cd ../backend
@@ -62,30 +72,21 @@ Browser -> /api/coc/* -> Vite proxy -> local backend -> Supercell
    npm start
    ```
 
-2. Copy `.env.example` to `.env.local` in both projects. Use the same
-   `COC_PROXY_SECRET` in both files. The backend also needs `COC_API_TOKEN`.
+4. Copy `.env.example` to `.env.local` in both projects. Use the same
+   `COC_PROXY_SECRET` in both files. The backend also needs `COC_API_TOKEN` and
+   `COC_API_BASE=https://cocproxy.royaleapi.dev/v1`.
 
-3. Run `npm run dev` or `npm run preview` from this repository.
+5. Run `npm run dev` or `npm run preview` from this repository.
 
 The tracker automatically syncs accounts that do not have metadata yet. Use the
-`Sinkron desa` button to refresh every village. Player responses are cached by
-the backend for 60 seconds; a manual sync bypasses the cache.
-
-For a Vercel deployment, set these environment variables for Production and
-Preview, then expose the backend with `tailscale funnel --bg 8787`:
-
-- `LOCAL_COC_API_URL=https://<machine>.<tailnet>.ts.net`
-- `COC_PROXY_SECRET=<same secret as the backend>`
+`Sinkron desa` button to refresh every village. Player responses are cached for
+60 seconds; a manual sync sends `?refresh=1`.
 
 Limitations:
 
-- The backend and Funnel must be running and the computer awake. If `/api/coc`
-  is unreachable, the manual sync action is hidden and automatic metadata sync
-  is skipped; timers and boosts keep working from IndexedDB.
-- The token is bound to the allowlisted public IP of the backend computer. If
-  that IP changes, update the key at the developer site. Some ISPs rotate
-  between several public IPs; add every IP shown in the error message (up to 10
-  addresses).
+- The RoyaleAPI proxy is a free community service without an SLA. If it is
+  unavailable, the manual sync action is hidden and automatic metadata sync is
+  skipped; timers and boosts keep working from IndexedDB.
 - The official API does not expose active upgrade timers. Timers still come from
   the in-game JSON export.
 
@@ -116,7 +117,7 @@ rewrite of unknown paths to `index.html` so direct visits to `/tracker` work.
 
 ```text
 api/
-└─ coc/[...path].ts        # Vercel Function proxy to Tailscale Funnel
+└─ coc/[...path].ts        # Vercel Function proxy to the RoyaleAPI proxy
 src/
 ├─ App.tsx                 # app shell and path routing
 ├─ main.tsx
