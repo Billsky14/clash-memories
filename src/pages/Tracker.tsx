@@ -118,11 +118,6 @@ export default function Tracker({ apiStatus, onApiStatusChange }: TrackerProps) 
       const failures: string[] = [];
 
       try {
-        const status = await getApiStatus();
-        onApiStatusChange(status.configured ? 'online' : 'unconfigured');
-
-        if (!status.configured) return;
-
         for (const account of targets) {
           try {
             const player = await getPlayer(account.tag);
@@ -146,9 +141,6 @@ export default function Tracker({ apiStatus, onApiStatusChange }: TrackerProps) 
             }
           }
         }
-      } catch {
-        onApiStatusChange('offline');
-        return;
       } finally {
         syncingMetadataRef.current = false;
         setSyncingMetadata(false);
@@ -224,9 +216,9 @@ export default function Tracker({ apiStatus, onApiStatusChange }: TrackerProps) 
         detail: `${result.importedUpgrades} upgrade aktif.${boostDetail}`,
         tone: 'success',
       });
-      reload();
+      void loadAccounts();
     },
-    [accounts, addToast, importTarget, reload],
+    [accounts, addToast, importTarget, loadAccounts],
   );
 
   const handleUpdateAccount = useCallback((account: Account) => {
@@ -251,9 +243,9 @@ export default function Tracker({ apiStatus, onApiStatusChange }: TrackerProps) 
           : `${result.affectedUpgrades} upgrade di ${spec.groupLabel} dipercepat ${result.boost.multiplier}x selama ${result.boost.quantity} jam.`,
         tone: 'success',
       });
-      reload();
+      void loadAccounts();
     },
-    [addToast, reload],
+    [addToast, loadAccounts],
   );
 
   const handleDeleteAccount = useCallback((account: Account) => {
@@ -277,7 +269,7 @@ export default function Tracker({ apiStatus, onApiStatusChange }: TrackerProps) 
         detail: 'Semua timer akun ini berhenti dipantau.',
         tone: 'info',
       });
-      reload();
+      void loadAccounts();
     } catch (deleteError) {
       addToast({
         title: 'Gagal menghapus akun',
@@ -288,7 +280,7 @@ export default function Tracker({ apiStatus, onApiStatusChange }: TrackerProps) 
     } finally {
       setDeleting(false);
     }
-  }, [addToast, deleteTarget, reload]);
+  }, [addToast, deleteTarget, loadAccounts]);
 
   const handleDismissUpgrade = useCallback(
     async (upgrade: AccountUpgrade) => {
