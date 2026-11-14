@@ -58,10 +58,7 @@ const navItems = [
   },
 ];
 
-const apiStatusMeta: Record<
-  ApiStatus,
-  { dotClass: string; label: string; title: string }
-> = {
+const apiStatusMeta: Record<ApiStatus, { dotClass: string; label: string; title: string }> = {
   checking: {
     dotClass: 'animate-pulse bg-[#6b7280]',
     label: 'Memeriksa status API',
@@ -89,16 +86,13 @@ function ApiStatusIndicator({ status }: { status: ApiStatus }) {
 
   return (
     <span
-      className="flex items-center gap-1.5"
+      className="flex shrink-0 items-center"
       title={meta.title}
       role="status"
       aria-live="polite"
       aria-label={meta.label}
     >
-      <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${meta.dotClass}`} />
-      <span aria-hidden="true" className="text-[10px] font-semibold tracking-[0.1em] uppercase">
-        API
-      </span>
+      <span aria-hidden="true" className={`size-2 rounded-full ${meta.dotClass}`} />
     </span>
   );
 }
@@ -244,7 +238,7 @@ export default function App() {
         </nav>
 
         {!isCollapsed && (
-          <div className="mt-auto flex flex-col gap-2 border-t border-white/8 px-2.5 pt-3.5 pb-1 text-[11.5px] text-[#6b7280] max-[760px]:hidden">
+          <div className="mt-auto flex items-center gap-2 border-t border-white/8 px-2.5 pt-3.5 pb-1 text-[11.5px] text-[#6b7280] max-[760px]:hidden">
             <span>Copyright©{currentYear} 愛Memories.</span>
             <ApiStatusIndicator status={apiStatus} />
           </div>
