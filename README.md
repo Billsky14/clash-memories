@@ -1,9 +1,10 @@
 # clash-monitoring
 
 React client for Clash Monitor. Its account, upgrade, and boost data live in the
-browser's IndexedDB, so no backend database or API server is required. An optional
-Vite-only proxy can fetch village metadata from the Supercell API during local
-development and preview.
+browser's IndexedDB, so there is no backend database. An optional local API
+backend, kept outside this repository, provides village metadata from the
+Supercell API. Production reaches it through a Vercel Function and Tailscale
+Funnel.
 
 ## Commands
 
@@ -15,6 +16,9 @@ npm run build    # tsc -b && vite build
 npm run lint     # Oxlint (not type-aware)
 npm run preview  # serve the production build
 ```
+
+The API backend is a separate Node project in `../backend`; see its README for
+setup and environment variables. Run both processes when village sync is needed.
 
 ## Data storage
 
@@ -33,31 +37,55 @@ each village JSON once after upgrading.
 
 ## Village metadata from the Supercell API
 
-Village names, clans, Town Hall levels, trophies, and leagues can be fetched from
-the official Clash of Clans API. The token stays on the local Vite server; it is
-never sent to the browser.
+Village names, clans, Town Hall levels, trophies, and leagues can be synced from
+the official Clash of Clans API. The token stays in the local backend; it is
+never sent to the browser or to Vercel.
 
-1. Create an API key at <https://developer.clashofclans.com> and allowlist the
-   public IP of the computer running the app.
-2. Copy `.env.example` to `.env.local` and fill in the token:
-   ```env
-   COC_API_TOKEN=your-token
+Production flow:
+
+```text
+Browser -> /api/coc/* -> Vercel Function -> Tailscale Funnel -> local backend -> Supercell
+```
+
+Local development uses the Vite dev/preview proxy instead of the Vercel
+Function:
+
+```text
+Browser -> /api/coc/* -> Vite proxy -> local backend -> Supercell
+```
+
+1. Start the backend in a separate terminal:
+
+   ```powershell
+   cd ../backend
+   npm install
+   npm start
    ```
-3. Run `npm run dev` or `npm run preview`.
+
+2. Copy `.env.example` to `.env.local` in both projects. Use the same
+   `COC_PROXY_SECRET` in both files. The backend also needs `COC_API_TOKEN`.
+
+3. Run `npm run dev` or `npm run preview` from this repository.
 
 The tracker automatically syncs accounts that do not have metadata yet. Use the
-`Sinkron desa` button to refresh every village. Player responses are cached for
-60 seconds; a manual sync bypasses the cache.
+`Sinkron desa` button to refresh every village. Player responses are cached by
+the backend for 60 seconds; a manual sync bypasses the cache.
+
+For a Vercel deployment, set these environment variables for Production and
+Preview, then expose the backend with `tailscale funnel --bg 8787`:
+
+- `LOCAL_COC_API_URL=https://<machine>.<tailnet>.ts.net`
+- `COC_PROXY_SECRET=<same secret as the backend>`
 
 Limitations:
 
-- The token is bound to the allowlisted IP. If your public IP changes, update the
-  key at the developer site. Some ISPs rotate between several public IPs (common
-  on mobile/CGNAT); add every IP shown in the error message to the key (up to 10
-  addresses) or use a connection with a stable public IP.
-- The proxy only exists in `npm run dev` and `npm run preview`. A static deploy
-  such as Vercel cannot fetch API data; the manual sync action is hidden when the
-  proxy is unreachable, and automatic metadata sync is skipped.
+- The backend and Funnel must be running and the computer awake. If `/api/coc`
+  is unreachable, the manual sync action is hidden and automatic metadata sync
+  is skipped; timers and boosts keep working from IndexedDB.
+- The token is bound to the allowlisted public IP of the backend computer. If
+  that IP changes, update the key at the developer site. Some ISPs rotate
+  between several public IPs; add every IP shown in the error message (up to 10
+  addresses).
 - The official API does not expose active upgrade timers. Timers still come from
   the in-game JSON export.
 
@@ -87,6 +115,8 @@ rewrite of unknown paths to `index.html` so direct visits to `/tracker` work.
 ## Structure
 
 ```text
+api/
+└─ coc/[...path].ts        # Vercel Function proxy to Tailscale Funnel
 src/
 ├─ App.tsx                 # app shell and path routing
 ├─ main.tsx

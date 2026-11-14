@@ -49,7 +49,7 @@ async function requestJson<T>(path: string): Promise<T> {
     throw new CocApiError(
       503,
       'proxy_unavailable',
-      'Tidak dapat menghubungi proxy API lokal. Pastikan aplikasi dijalankan dengan npm run dev atau npm run preview.',
+      'Tidak dapat menghubungi layanan desa. Periksa koneksi lalu coba lagi.',
     );
   }
 
@@ -59,7 +59,7 @@ async function requestJson<T>(path: string): Promise<T> {
     throw new CocApiError(
       503,
       'proxy_unavailable',
-      'Fitur API hanya tersedia saat aplikasi dijalankan lokal dengan npm run dev atau npm run preview.',
+      'Layanan desa sedang tidak tersedia. Coba lagi beberapa saat lagi.',
     );
   }
 

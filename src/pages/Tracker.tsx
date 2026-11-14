@@ -132,7 +132,7 @@ export default function Tracker() {
             addToast({
               title: 'Token API belum diset',
               detail:
-                'Tambahkan COC_API_TOKEN di clash-monitoring/.env.local, lalu jalankan ulang server.',
+                'Tambahkan COC_API_TOKEN di backend/.env.local, lalu jalankan ulang backend.',
               tone: 'error',
             });
           }
