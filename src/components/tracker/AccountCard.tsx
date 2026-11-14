@@ -104,7 +104,7 @@ export default function AccountCard({
             <h2 className="m-0 truncate text-[15px] font-semibold tracking-[-0.01em] text-heading">
               {displayName}
             </h2>
-            <p className={`${panelSubtitleClass} truncate`}>
+            <p className={`${panelSubtitleClass} break-words`}>
               <span className="font-mono">{account.tag}</span>
               {api?.clanName && <> · {api.clanName}</>}
               {api?.leagueName && <> · {api.leagueName}</>}
