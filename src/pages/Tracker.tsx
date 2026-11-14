@@ -28,7 +28,7 @@ import type {
   ImportResult,
   ToastMessage,
 } from '../lib/types.ts';
-import { panelClass } from '../lib/ui.ts';
+import { panelBorderlessClass, panelClass } from '../lib/ui.ts';
 
 const toolbarClass =
   'mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-canvas px-5 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]';
@@ -418,7 +418,7 @@ export default function Tracker() {
       {isInitialLoading ? (
         <div className={gridClass} aria-label="Memuat akun">
           {[0, 1, 2].map((item) => (
-            <div key={item} className={`${panelClass} animate-pulse p-5`}>
+            <div key={item} className={`${panelBorderlessClass} animate-pulse p-5`}>
               <div className="h-4 w-32 rounded bg-[rgba(127,127,127,0.14)]" />
               <div className="mt-3 h-3 w-24 rounded bg-[rgba(127,127,127,0.1)]" />
               <div className="mt-6 space-y-3">

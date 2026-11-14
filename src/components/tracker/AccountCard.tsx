@@ -8,7 +8,12 @@ import {
 } from '../../lib/boosts.ts';
 import { formatCountdown, formatDurationMs, formatRelativeTime } from '../../lib/format.ts';
 import { getCategoryLabel, getGameName, getNextLevel } from '../../lib/gameData.ts';
-import { panelClass, panelHeadClass, panelSubtitleClass, thBadgeClass } from '../../lib/ui.ts';
+import {
+  panelBorderlessClass,
+  panelHeadClass,
+  panelSubtitleClass,
+  thBadgeClass,
+} from '../../lib/ui.ts';
 import Icon from '../common/Icon.tsx';
 
 type AccountCardProps = {
@@ -72,7 +77,7 @@ export default function AccountCard({
   onBoost,
   onDismissUpgrade,
 }: AccountCardProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const contentId = `account-detail-${account.tag.replace('#', '')}`;
   const upgrades = account.upgrades
     .filter((upgrade) => !isEquipment(upgrade))
@@ -85,7 +90,7 @@ export default function AccountCard({
 
   return (
     <section
-      className={panelClass}
+      className={panelBorderlessClass}
       aria-label={`Akun ${displayName} (${account.tag})`}
       aria-busy={metadataLoading || undefined}
     >
@@ -161,166 +166,174 @@ export default function AccountCard({
         </div>
       </div>
 
-      <div id={contentId} hidden={!expanded}>
-        <div className="flex items-center justify-between gap-2 border-b border-line px-3.5 py-2">
-          <button type="button" className={primaryActionClass} onClick={() => onUpdate(account)}>
-            <Icon>
-              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-              <path d="M21 3v6h-6" />
-            </Icon>
-            Impor ulang
-          </button>
-          <button type="button" className={dangerActionClass} onClick={() => onDelete(account)}>
-            <Icon>
-              <path d="M3 6h18" />
-              <path d="M8 6V4h8v2" />
-              <path d="m19 6-1 14H6L5 6" />
-              <path d="M10 11v5" />
-              <path d="M14 11v5" />
-            </Icon>
-            Hapus Desa
-          </button>
-        </div>
+      <div
+        id={contentId}
+        className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
+          expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+        }`}
+        inert={!expanded}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="flex items-center justify-between gap-2 border-y border-line px-3.5 py-2">
+            <button type="button" className={primaryActionClass} onClick={() => onUpdate(account)}>
+              <Icon>
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                <path d="M21 3v6h-6" />
+              </Icon>
+              Impor ulang
+            </button>
+            <button type="button" className={dangerActionClass} onClick={() => onDelete(account)}>
+              <Icon>
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="m19 6-1 14H6L5 6" />
+                <path d="M10 11v5" />
+                <path d="M14 11v5" />
+              </Icon>
+              Hapus Desa
+            </button>
+          </div>
 
-        {upgrades.length === 0 ? (
-          <p className="px-5 py-8 text-center text-[12px] text-body">Tidak ada upgrade berjalan.</p>
-        ) : (
-          <div className="px-5 pb-2">
-            {groups.map((group, index) => {
-              const boostKind = getBoostKindForGroup(group.id);
-              const spec = boostKind ? BOOST_SPECS[boostKind] : null;
-              const activeBoost = boostKind
-                ? activeBoosts.find((boost) => boost.kind === boostKind)
-                : undefined;
-              const hasActiveUpgrades = group.upgrades.some(
-                (upgrade) => upgrade.endsAt > now,
-              );
+          {upgrades.length === 0 ? (
+            <p className="px-5 py-8 text-center text-[12px] text-body">Tidak ada upgrade berjalan.</p>
+          ) : (
+            <div className="px-5 pb-2">
+              {groups.map((group, index) => {
+                const boostKind = getBoostKindForGroup(group.id);
+                const spec = boostKind ? BOOST_SPECS[boostKind] : null;
+                const activeBoost = boostKind
+                  ? activeBoosts.find((boost) => boost.kind === boostKind)
+                  : undefined;
+                const hasActiveUpgrades = group.upgrades.some(
+                  (upgrade) => upgrade.endsAt > now,
+                );
 
-              return (
-                <section
-                  key={group.id}
-                  aria-label={group.label}
-                  className={index > 0 ? 'border-t border-line' : undefined}
-                >
-                  <div className="relative flex flex-wrap items-center gap-x-2 gap-y-1 pt-3 pb-0.5 before:absolute before:top-1.5 before:bottom-0 before:-left-3 before:w-[3px] before:rounded-full before:bg-accent before:content-[''] after:absolute after:bottom-0 after:-left-3 after:-right-3 after:h-[2px] after:rounded-full after:bg-accent after:content-['']">
-                    <h3 className="m-0 text-[10px] font-semibold tracking-[0.1em] uppercase text-body">
-                      {group.label}
-                    </h3>
-                    <span className="text-[10px] font-semibold tabular-nums text-body opacity-80">
-                      {group.upgrades.length} Peningkatan
-                    </span>
-                    {spec && boostKind && hasActiveUpgrades && (
-                      <div className="ml-auto -translate-y-1">
-                        {activeBoost ? (
-                          <button
-                            type="button"
-                            className={activeBoostClass}
-                            onClick={() => onBoost(account, boostKind)}
-                            title={`Tambah durasi ${spec.label} (aktif sampai ${new Date(activeBoost.endsAt).toLocaleTimeString('id-ID')})`}
-                            aria-label={`Tambah durasi ${spec.label} ${spec.multiplier}x`}
+                return (
+                  <section
+                    key={group.id}
+                    aria-label={group.label}
+                    className={index > 0 ? 'border-t border-line' : undefined}
+                  >
+                    <div className="relative flex flex-wrap items-center gap-x-2 gap-y-1 pt-3 pb-0.5 before:absolute before:top-1.5 before:bottom-0 before:-left-3 before:w-[3px] before:rounded-full before:bg-accent before:content-[''] after:absolute after:bottom-0 after:-left-3 after:-right-3 after:h-[2px] after:rounded-full after:bg-accent after:content-['']">
+                      <h3 className="m-0 text-[10px] font-semibold tracking-[0.1em] uppercase text-body">
+                        {group.label}
+                      </h3>
+                      <span className="text-[10px] font-semibold tabular-nums text-body opacity-80">
+                        {group.upgrades.length} Peningkatan
+                      </span>
+                      {spec && boostKind && hasActiveUpgrades && (
+                        <div className="ml-auto -translate-y-1">
+                          {activeBoost ? (
+                            <button
+                              type="button"
+                              className={activeBoostClass}
+                              onClick={() => onBoost(account, boostKind)}
+                              title={`Tambah durasi ${spec.label} (aktif sampai ${new Date(activeBoost.endsAt).toLocaleTimeString('id-ID')})`}
+                              aria-label={`Tambah durasi ${spec.label} ${spec.multiplier}x`}
+                            >
+                              <Icon>{lightningPath}</Icon>
+                              {spec.multiplier}x · {formatCountdown(activeBoost.endsAt, now)}
+                              <span aria-hidden="true" className="ml-0.5 text-[11px] leading-none">
+                                +
+                              </span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className={boostButtonClass}
+                              onClick={() => onBoost(account, boostKind)}
+                              title={`Gunakan ${spec.label} (${spec.multiplier}x, 1 jam per kuantitas)`}
+                              aria-label={`Gunakan ${spec.label} ${spec.multiplier}x`}
+                            >
+                              <Icon>{lightningPath}</Icon>
+                              {spec.multiplier}x
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <ul className="m-0 list-none pb-1">
+                      {group.upgrades.map((upgrade) => {
+                        const realRemaining = upgrade.endsAt - now;
+                        const isCompleted = realRemaining <= 0;
+                        const originalRemaining =
+                          !isCompleted && activeBoost
+                            ? getRemainingWorkMs(upgrade.endsAt, now, activeBoost)
+                            : null;
+                        const nextLevel = getNextLevel(upgrade.base, upgrade.dataId, upgrade.level);
+
+                        return (
+                          <li
+                            key={upgrade.id}
+                            className="flex items-center justify-between gap-3 py-2.5 [&+&]:border-t [&+&]:border-line"
                           >
-                            <Icon>{lightningPath}</Icon>
-                            {spec.multiplier}x · {formatCountdown(activeBoost.endsAt, now)}
-                            <span aria-hidden="true" className="ml-0.5 text-[11px] leading-none">
-                              +
-                            </span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className={boostButtonClass}
-                            onClick={() => onBoost(account, boostKind)}
-                            title={`Gunakan ${spec.label} (${spec.multiplier}x, 1 jam per kuantitas)`}
-                            aria-label={`Gunakan ${spec.label} ${spec.multiplier}x`}
-                          >
-                            <Icon>{lightningPath}</Icon>
-                            {spec.multiplier}x
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <ul className="m-0 list-none pb-1">
-                    {group.upgrades.map((upgrade) => {
-                      const realRemaining = upgrade.endsAt - now;
-                      const isCompleted = realRemaining <= 0;
-                      const originalRemaining =
-                        !isCompleted && activeBoost
-                          ? getRemainingWorkMs(upgrade.endsAt, now, activeBoost)
-                          : null;
-                      const nextLevel = getNextLevel(upgrade.base, upgrade.dataId, upgrade.level);
-
-                      return (
-                        <li
-                          key={upgrade.id}
-                          className="flex items-center justify-between gap-3 py-2.5 [&+&]:border-t [&+&]:border-line"
-                        >
-                          <div className="min-w-0">
-                            <p className="m-0 truncate text-[12.5px] font-semibold text-heading">
-                              {getGameName(upgrade.base, upgrade.dataId)}
-                            </p>
-                            <p className="mt-0.5 text-[10.5px] text-body">
-                              Level {upgrade.level} → {nextLevel} ·{' '}
-                              {getCategoryLabel(upgrade.category)}
-                            </p>
-                          </div>
-                          <div className="shrink-0 text-right">
-                            {isCompleted ? (
-                              <div className="flex items-center justify-end gap-2">
+                            <div className="min-w-0">
+                              <p className="m-0 truncate text-[12.5px] font-semibold text-heading">
+                                {getGameName(upgrade.base, upgrade.dataId)}
+                              </p>
+                              <p className="mt-0.5 text-[10.5px] text-body">
+                                Level {upgrade.level} → {nextLevel} ·{' '}
+                                {getCategoryLabel(upgrade.category)}
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              {isCompleted ? (
+                                <div className="flex items-center justify-end gap-2">
+                                  <span
+                                    className="inline-flex items-center gap-1 rounded-full bg-green-soft px-2 py-1 text-[10px] font-semibold text-green [&_svg]:size-3"
+                                    role="status"
+                                    title={`Selesai ${new Date(upgrade.endsAt).toLocaleString('id-ID')}`}
+                                  >
+                                    <Icon>
+                                      <path d="m5 13 4 4L19 7" />
+                                    </Icon>
+                                    Selesai
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-[14px] text-body hover:bg-[rgba(127,127,127,0.08)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                                    onClick={() => onDismissUpgrade(upgrade)}
+                                    aria-label={`Tutup peningkatan selesai ${getGameName(upgrade.base, upgrade.dataId)}`}
+                                    title="Tutup peningkatan selesai"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ) : activeBoost && originalRemaining !== null ? (
+                                <div
+                                  title={`Timer asli ${formatDurationMs(originalRemaining)} (${activeBoost.multiplier}x) · selesai dalam ${formatCountdown(upgrade.endsAt, now)}`}
+                                >
+                                  <span className="block font-mono text-[13.5px] leading-tight font-bold tabular-nums text-gold">
+                                    {formatDurationMs(originalRemaining)}
+                                  </span>
+                                  <span className="mt-0.5 block text-[9.5px] font-medium whitespace-nowrap text-body">
+                                    <span
+                                      className={`font-mono font-semibold tabular-nums ${getCountdownTone(realRemaining)}`}
+                                    >
+                                      {formatCountdown(upgrade.endsAt, now)}
+                                    </span>
+                                  </span>
+                                </div>
+                              ) : (
                                 <span
-                                  className="inline-flex items-center gap-1 rounded-full bg-green-soft px-2 py-1 text-[10px] font-semibold text-green [&_svg]:size-3"
-                                  role="status"
+                                  className={`font-mono text-[13px] font-bold tabular-nums ${getCountdownTone(realRemaining)}`}
                                   title={`Selesai ${new Date(upgrade.endsAt).toLocaleString('id-ID')}`}
                                 >
-                                  <Icon>
-                                    <path d="m5 13 4 4L19 7" />
-                                  </Icon>
-                                  Selesai
+                                  {formatCountdown(upgrade.endsAt, now)}
                                 </span>
-                                <button
-                                  type="button"
-                                  className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-[14px] text-body hover:bg-[rgba(127,127,127,0.08)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                                  onClick={() => onDismissUpgrade(upgrade)}
-                                  aria-label={`Tutup peningkatan selesai ${getGameName(upgrade.base, upgrade.dataId)}`}
-                                  title="Tutup peningkatan selesai"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ) : activeBoost && originalRemaining !== null ? (
-                              <div
-                                title={`Timer asli ${formatDurationMs(originalRemaining)} (${activeBoost.multiplier}x) · selesai dalam ${formatCountdown(upgrade.endsAt, now)}`}
-                              >
-                                <span className="block font-mono text-[13.5px] leading-tight font-bold tabular-nums text-gold">
-                                  {formatDurationMs(originalRemaining)}
-                                </span>
-                                <span className="mt-0.5 block text-[9.5px] font-medium whitespace-nowrap text-body">
-                                  <span
-                                    className={`font-mono font-semibold tabular-nums ${getCountdownTone(realRemaining)}`}
-                                  >
-                                    {formatCountdown(upgrade.endsAt, now)}
-                                  </span>
-                                </span>
-                              </div>
-                            ) : (
-                              <span
-                                className={`font-mono text-[13px] font-bold tabular-nums ${getCountdownTone(realRemaining)}`}
-                                title={`Selesai ${new Date(upgrade.endsAt).toLocaleString('id-ID')}`}
-                              >
-                                {formatCountdown(upgrade.endsAt, now)}
-                              </span>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              );
-            })}
-          </div>
-        )}
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
