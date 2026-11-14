@@ -83,9 +83,9 @@ export default function AccountCard({
       aria-label={`Akun ${displayName} (${account.tag})`}
       aria-busy={metadataLoading || undefined}
     >
-      <div className={panelHeadClass}>
+      <div className={`${panelHeadClass} flex-wrap`}>
         {metadataLoading ? (
-          <div className="min-w-0 flex-1">
+          <div className="min-w-[200px] flex-1">
             <h2 className="m-0" aria-label={`Memuat detail desa ${account.tag}`}>
               <span
                 aria-hidden="true"
@@ -100,7 +100,7 @@ export default function AccountCard({
             <span aria-hidden="true" className={`${skeletonClass} mt-2 h-2.5 w-28 rounded`} />
           </div>
         ) : (
-          <div className="min-w-0">
+          <div className="min-w-[200px] flex-1">
             <h2 className="m-0 truncate text-[15px] font-semibold tracking-[-0.01em] text-heading">
               {displayName}
             </h2>
@@ -118,7 +118,7 @@ export default function AccountCard({
             </p>
           </div>
         )}
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
           {townHall !== null && <span className={thBadgeClass}>TH {townHall}</span>}
           {metadataLoading ? (
             <span
