@@ -239,8 +239,8 @@ export default function App() {
 
         {!isCollapsed && (
           <div className="mt-auto flex items-center gap-2 border-t border-white/8 px-2.5 pt-3.5 pb-1 text-[11.5px] text-[#6b7280] max-[760px]:hidden">
-            <span>Copyright©{currentYear} 愛Memories.</span>
             <ApiStatusIndicator status={apiStatus} />
+            <span>Copyright©{currentYear} 愛Memories.</span>
           </div>
         )}
       </aside>

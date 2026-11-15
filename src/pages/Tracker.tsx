@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import ConfirmDialog from '../components/common/ConfirmDialog.tsx';
 import Icon from '../components/common/Icon.tsx';
 import ToastStack from '../components/common/ToastStack.tsx';
+import AboutModal from '../components/tracker/AboutModal.tsx';
 import AccountCard from '../components/tracker/AccountCard.tsx';
 import BoostDialog from '../components/tracker/BoostDialog.tsx';
 import ImportModal from '../components/tracker/ImportModal.tsx';
@@ -38,6 +39,9 @@ const toolbarClass =
 const primaryButtonClass =
   'inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-gold px-3.5 py-[9px] text-[12.5px] font-bold whitespace-nowrap text-[#2b1a02] transition-[filter] duration-150 hover:brightness-[1.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-60';
 
+const secondaryButtonClass =
+  'inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-transparent px-3 py-[9px] text-[12.5px] font-semibold whitespace-nowrap text-heading transition-colors duration-150 hover:bg-[rgba(127,127,127,0.06)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&_svg]:size-3.5';
+
 const gridClass = 'grid items-start gap-4 min-[760px]:grid-cols-2 min-[1100px]:grid-cols-3';
 
 const errorPanelClass =
@@ -52,6 +56,7 @@ export default function Tracker({ apiStatus, onApiStatusChange }: TrackerProps) 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [importTarget, setImportTarget] = useState<{ tag?: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Account | null>(null);
   const [boostTarget, setBoostTarget] = useState<{
@@ -328,6 +333,20 @@ export default function Tracker({ apiStatus, onApiStatusChange }: TrackerProps) 
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className={secondaryButtonClass}
+            onClick={() => setAboutOpen(true)}
+            aria-haspopup="dialog"
+            title="Tentang tracker ini"
+          >
+            <Icon>
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 11v5" />
+              <path d="M12 8h.01" />
+            </Icon>
+            Info
+          </button>
           <button type="button" className={primaryButtonClass} onClick={() => setImportTarget({})}>
             <Icon>
               <path d="M12 5v14" />
@@ -428,6 +447,7 @@ export default function Tracker({ apiStatus, onApiStatusChange }: TrackerProps) 
         </div>
       )}
 
+      {aboutOpen && <AboutModal onClose={() => setAboutOpen(false)} />}
       {importTarget && (
         <ImportModal
           expectedTag={importTarget.tag}
