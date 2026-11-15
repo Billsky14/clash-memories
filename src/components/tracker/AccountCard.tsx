@@ -117,46 +117,47 @@ export default function AccountCard({
       aria-busy={metadataLoading || undefined}
     >
       <div className={`${panelHeadClass} flex-wrap`}>
-        {metadataLoading ? (
-          <div className="relative min-w-[200px] flex-1">
-            <h2 className="m-0" aria-label={`Memuat detail desa ${account.tag}`}>
-              <span
-                aria-hidden="true"
-                className={`${skeletonClass} h-[17px] w-40 max-w-[75%] rounded`}
-              />
-            </h2>
-            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="font-mono text-[11.5px] text-body">{account.tag}</span>
-              <span aria-hidden="true" className={`${skeletonClass} h-2.5 w-20 rounded`} />
-              <span aria-hidden="true" className={`${skeletonClass} h-2.5 w-14 rounded`} />
-            </div>
-            <span aria-hidden="true" className={`${skeletonClass} mt-2 h-2.5 w-28 rounded`} />
-            {toggleButton}
-          </div>
-        ) : (
-          <div className="relative min-w-[200px] flex-1">
-            <h2 className="m-0 truncate pr-10 text-[15px] font-semibold tracking-[-0.01em] text-heading">
-              {displayName}
-            </h2>
-            {apiSubtitle && (
-              <p className={`${panelSubtitleClass} break-words`}>{apiSubtitle}</p>
-            )}
-            <p
-              className={`${
-                apiSubtitle ? 'mt-0.5' : 'mt-[3px]'
-              } text-[10.5px] text-body`}
-            >
-              {api ? (
-                <span className="font-mono">{account.tag}</span>
-              ) : account.lastImportAt > 0 ? (
-                `Diperbarui ${formatRelativeTime(account.lastImportAt, now)}`
-              ) : (
-                'Belum ada impor timer'
+        <div className="relative min-w-[200px] basis-full">
+          {metadataLoading ? (
+            <>
+              <h2 className="m-0" aria-label={`Memuat detail desa ${account.tag}`}>
+                <span
+                  aria-hidden="true"
+                  className={`${skeletonClass} h-[17px] w-40 max-w-[75%] rounded`}
+                />
+              </h2>
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="font-mono text-[11.5px] text-body">{account.tag}</span>
+                <span aria-hidden="true" className={`${skeletonClass} h-2.5 w-20 rounded`} />
+                <span aria-hidden="true" className={`${skeletonClass} h-2.5 w-14 rounded`} />
+              </div>
+              <span aria-hidden="true" className={`${skeletonClass} mt-2 h-2.5 w-28 rounded`} />
+            </>
+          ) : (
+            <>
+              <h2 className="m-0 truncate pr-10 text-[15px] font-semibold tracking-[-0.01em] text-heading">
+                {displayName}
+              </h2>
+              {apiSubtitle && (
+                <p className={`${panelSubtitleClass} break-words`}>{apiSubtitle}</p>
               )}
-            </p>
-            {toggleButton}
-          </div>
-        )}
+              <p
+                className={`${
+                  apiSubtitle ? 'mt-0.5' : 'mt-[3px]'
+                } text-[10.5px] text-body`}
+              >
+                {api ? (
+                  <span className="font-mono">{account.tag}</span>
+                ) : account.lastImportAt > 0 ? (
+                  `Diperbarui ${formatRelativeTime(account.lastImportAt, now)}`
+                ) : (
+                  'Belum ada impor timer'
+                )}
+              </p>
+            </>
+          )}
+          {toggleButton}
+        </div>
         <div className="ml-auto flex min-h-7 shrink-0 flex-wrap items-center justify-end gap-2">
           {townHall !== null && <span className={thBadgeClass}>TH {townHall}</span>}
           {metadataLoading ? (
