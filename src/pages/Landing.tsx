@@ -619,7 +619,7 @@ export default function Landing() {
               className="flex items-center gap-3 rounded-lg no-underline transition-opacity duration-150 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <img
-                src="/ClashOfClansIconsLogoVector.svg.png"
+                src="/assets/img/logo.png"
                 alt=""
                 aria-hidden="true"
                 draggable={false}

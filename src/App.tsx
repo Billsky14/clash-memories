@@ -166,7 +166,7 @@ export default function App() {
           }`}
         >
           <img
-            src="/ClashOfClansIconsLogoVector.svg.png"
+            src="/assets/img/logo.png"
             alt=""
             aria-hidden="true"
             draggable={false}

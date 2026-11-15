@@ -10,18 +10,27 @@ const guideSteps = [
     title: 'Lorem ipsum dolor sit amet',
     description:
       'Consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+    image: '/assets/img/step-1.png',
+    imageAlt:
+      'Layar Settings Clash of Clans dengan panah menuju menu More Settings.',
   },
   {
     label: 'Langkah 2',
     title: 'Ut enim ad minim veniam',
     description:
       'Quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+    image: '/assets/img/step-2.png',
+    imageAlt:
+      'Layar Settings dengan panah menuju tombol Copy pada Export Village data in JSON format.',
   },
   {
     label: 'Langkah 3',
     title: 'Duis aute irure dolor',
     description:
       'In reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
+    image: '/assets/img/step-3.png',
+    imageAlt:
+      'Dialog Impor JSON desa dengan menu klik kanan dan opsi Paste yang disorot.',
   },
 ];
 
@@ -58,8 +67,8 @@ function GuideSlide({ step }: { step: number }) {
   const guide = guideSteps[step];
 
   return (
-    <div className="grid gap-5 min-[560px]:grid-cols-[minmax(0,1fr)_190px] min-[560px]:items-start">
-      <div className="min-w-0">
+    <div>
+      <div className="max-w-[58ch]">
         <p className="m-0 font-mono text-[10px] font-semibold tracking-[0.18em] uppercase text-body">
           {guide.label} dari {guideSteps.length}
         </p>
@@ -69,15 +78,16 @@ function GuideSlide({ step }: { step: number }) {
         <p className="mt-2 text-[11.5px] leading-[1.65] text-body">{guide.description}</p>
       </div>
 
-      <figure className="m-0 mx-auto w-full max-w-[210px] min-[560px]:mx-0">
-        <div className="flex aspect-[9/16] w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-line bg-[rgba(127,127,127,0.04)] px-3 text-center">
-          <span className="font-mono text-[10px] font-semibold tracking-[0.16em] uppercase text-body">
-            Screenshot {step + 1}
-          </span>
-          <span className="text-[10.5px] leading-snug text-body opacity-70">
-            Ganti dengan gambar game
-          </span>
-        </div>
+      <figure className="m-0 mt-4">
+        <img
+          src={guide.image}
+          alt={guide.imageAlt}
+          width={880}
+          height={580}
+          draggable={false}
+          decoding="async"
+          className="block h-auto w-full rounded-lg border border-line bg-[rgba(127,127,127,0.04)]"
+        />
         <figcaption className="mt-2 text-[10.5px] leading-snug text-body opacity-80">
           Lorem ipsum dolor sit amet, consectetur adipiscing elit.
         </figcaption>
@@ -154,6 +164,13 @@ export default function AboutModal({ onClose }: AboutModalProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
+
+  useEffect(() => {
+    guideSteps.forEach((guide) => {
+      const image = new Image();
+      image.src = guide.image;
+    });
+  }, []);
 
   const title = step < guideSteps.length ? 'Cara pakai' : 'Tentang halaman ini';
 
