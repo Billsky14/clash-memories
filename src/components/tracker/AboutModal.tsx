@@ -86,9 +86,9 @@ function GuideSlide({ step }: { step: number }) {
           height={580}
           draggable={false}
           decoding="async"
-          className="block h-auto w-full rounded-lg border border-line bg-[rgba(127,127,127,0.04)]"
+          className="mx-auto block h-auto max-h-[300px] w-auto max-w-full rounded-lg border border-line bg-[rgba(127,127,127,0.04)]"
         />
-        <figcaption className="mt-2 text-[10.5px] leading-snug text-body opacity-80">
+        <figcaption className="mx-auto mt-2 max-w-[455px] text-[10.5px] leading-snug text-body opacity-80">
           Lorem ipsum dolor sit amet, consectetur adipiscing elit.
         </figcaption>
       </figure>
@@ -183,7 +183,7 @@ export default function AboutModal({ onClose }: AboutModalProps) {
       }}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-line bg-canvas shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-line bg-canvas shadow-2xl min-[760px]:h-[620px]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="about-tracker-title"
