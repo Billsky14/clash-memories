@@ -138,12 +138,14 @@ export default function AccountCard({
             <h2 className="m-0 truncate pr-10 text-[15px] font-semibold tracking-[-0.01em] text-heading">
               {displayName}
             </h2>
-            {(!api || apiSubtitle) && (
-              <p className={`${panelSubtitleClass} break-words`}>
-                {api ? apiSubtitle : <span className="font-mono">{account.tag}</span>}
-              </p>
+            {apiSubtitle && (
+              <p className={`${panelSubtitleClass} break-words`}>{apiSubtitle}</p>
             )}
-            <p className="mt-0.5 text-[10.5px] text-body">
+            <p
+              className={`${
+                apiSubtitle ? 'mt-0.5' : 'mt-[3px]'
+              } text-[10.5px] text-body`}
+            >
               {api ? (
                 <span className="font-mono">{account.tag}</span>
               ) : account.lastImportAt > 0 ? (
