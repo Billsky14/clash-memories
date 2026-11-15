@@ -45,7 +45,7 @@ const activeBoostClass =
   'inline-flex cursor-pointer items-center gap-1 rounded-md bg-gold px-2 py-1 text-[10px] font-bold tabular-nums text-[#2b1a02] transition-[filter] duration-150 hover:brightness-[1.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold [&_svg]:size-3';
 
 const collapseButtonClass =
-  'grid size-7 shrink-0 cursor-pointer place-items-center rounded-md border border-line bg-transparent text-body transition-colors duration-150 hover:bg-[rgba(127,127,127,0.06)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&_svg]:size-3.5';
+  'grid size-8 shrink-0 -my-[5px] cursor-pointer place-items-center rounded-md border border-line bg-transparent text-body transition-colors duration-150 hover:bg-[rgba(127,127,127,0.06)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&_svg]:size-4';
 
 const skeletonClass = 'block animate-pulse bg-[rgba(127,127,127,0.12)]';
 
@@ -88,6 +88,27 @@ export default function AccountCard({
   const displayName = api?.name ?? account.tag;
   const townHall = api?.townHallLevel ?? account.townHall;
   const apiSubtitle = api ? [api.clanName, api.leagueName].filter(Boolean).join(' · ') : '';
+  const toggleButton = (
+    <button
+      type="button"
+      className={collapseButtonClass}
+      onClick={() => setExpanded((value) => !value)}
+      aria-expanded={expanded}
+      aria-controls={contentId}
+      aria-label={`${expanded ? 'Tutup' : 'Buka'} detail ${displayName}`}
+      title={expanded ? 'Tutup detail desa' : 'Buka detail desa'}
+    >
+      <span
+        className={`block transition-transform duration-200 motion-reduce:transition-none ${
+          expanded ? 'rotate-180' : ''
+        }`}
+      >
+        <Icon>
+          <path d="m6 9 6 6 6-6" />
+        </Icon>
+      </span>
+    </button>
+  );
 
   return (
     <section
@@ -98,12 +119,15 @@ export default function AccountCard({
       <div className={`${panelHeadClass} flex-wrap`}>
         {metadataLoading ? (
           <div className="min-w-[200px] flex-1">
-            <h2 className="m-0" aria-label={`Memuat detail desa ${account.tag}`}>
-              <span
-                aria-hidden="true"
-                className={`${skeletonClass} h-[17px] w-40 max-w-[75%] rounded`}
-              />
-            </h2>
+            <div className="flex min-w-0 items-center gap-2">
+              <h2 className="m-0 w-40 max-w-full" aria-label={`Memuat detail desa ${account.tag}`}>
+                <span
+                  aria-hidden="true"
+                  className={`${skeletonClass} h-[17px] w-full rounded`}
+                />
+              </h2>
+              {toggleButton}
+            </div>
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="font-mono text-[11.5px] text-body">{account.tag}</span>
               <span aria-hidden="true" className={`${skeletonClass} h-2.5 w-20 rounded`} />
@@ -113,9 +137,12 @@ export default function AccountCard({
           </div>
         ) : (
           <div className="min-w-[200px] flex-1">
-            <h2 className="m-0 truncate text-[15px] font-semibold tracking-[-0.01em] text-heading">
-              {displayName}
-            </h2>
+            <div className="flex min-w-0 items-center gap-2">
+              <h2 className="m-0 min-w-0 truncate text-[15px] font-semibold tracking-[-0.01em] text-heading">
+                {displayName}
+              </h2>
+              {toggleButton}
+            </div>
             {(!api || apiSubtitle) && (
               <p className={`${panelSubtitleClass} break-words`}>
                 {api ? apiSubtitle : <span className="font-mono">{account.tag}</span>}
@@ -147,25 +174,6 @@ export default function AccountCard({
           <span className="rounded-full bg-chip-bg px-2 py-1 text-[10px] font-semibold text-chip-fg">
             {upgrades.length} Peningkatan
           </span>
-          <button
-            type="button"
-            className={collapseButtonClass}
-            onClick={() => setExpanded((value) => !value)}
-            aria-expanded={expanded}
-            aria-controls={contentId}
-            aria-label={`${expanded ? 'Tutup' : 'Buka'} detail ${displayName}`}
-            title={expanded ? 'Tutup detail desa' : 'Buka detail desa'}
-          >
-            <span
-              className={`block transition-transform duration-200 motion-reduce:transition-none ${
-                expanded ? 'rotate-180' : ''
-              }`}
-            >
-              <Icon>
-                <path d="m6 9 6 6 6-6" />
-              </Icon>
-            </span>
-          </button>
         </div>
       </div>
 
